@@ -62,6 +62,12 @@ const CodeBlock = ({ children, className, ...rest }: any) => {
   );
 };
 
+// Define stable references outside component to prevent re-renders
+const REMARK_PLUGINS = [remarkGfm];
+const COMPONENTS = {
+  code: CodeBlock
+};
+
 export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(({ content, fontFamily, onScroll, isZenMode }, ref) => {
   const getFontClass = () => {
     switch(fontFamily) {
@@ -90,10 +96,8 @@ export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(
        >
          {content.trim() ? (
            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                code: CodeBlock
-              }}
+              remarkPlugins={REMARK_PLUGINS}
+              components={COMPONENTS}
            >
               {content}
            </ReactMarkdown>

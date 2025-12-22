@@ -19,6 +19,38 @@ interface AIPanelProps {
 
 type ToneType = 'Professional' | 'Casual' | 'Creative' | 'Academic' | 'Concise';
 
+// Extracted CodeBlock component for AIPanel to ensure stability
+const MessageCodeBlock = ({ children, className, node, ...rest }: any) => {
+  const match = /language-(\w+)/.exec(className || '');
+  return match ? (
+    // @ts-ignore
+    <SyntaxHighlighter
+      {...rest}
+      PreTag="div"
+      children={String(children).replace(/\n$/, '')}
+      language={match[1]}
+      style={vscDarkPlus}
+      customStyle={{ 
+        background: 'var(--background)', 
+        margin: '0.8em 0', 
+        border: '1px solid var(--border)', 
+        borderRadius: '0.5rem', 
+        fontSize: '0.85em' 
+      }}
+    />
+  ) : (
+    <code {...rest} className="bg-black/5 dark:bg-white/10 px-1 py-0.5 rounded font-mono text-[0.9em]">
+      {children}
+    </code>
+  );
+};
+
+// Stable references
+const REMARK_PLUGINS = [remarkGfm];
+const COMPONENTS = {
+  code: MessageCodeBlock
+};
+
 export const AIPanel: React.FC<AIPanelProps> = ({ 
   isOpen, 
   onClose, 
@@ -139,28 +171,8 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                     {msg.role === 'model' ? (
                          <div className="prose prose-neutral dark:prose-invert prose-xs max-w-none leading-relaxed break-words">
                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                  code(props) {
-                                    const {children, className, node, ...rest} = props;
-                                    const match = /language-(\w+)/.exec(className || '');
-                                    return match ? (
-                                      // @ts-ignore
-                                      <SyntaxHighlighter
-                                        {...rest}
-                                        PreTag="div"
-                                        children={String(children).replace(/\n$/, '')}
-                                        language={match[1]}
-                                        style={vscDarkPlus}
-                                        customStyle={{ background: 'var(--background)', margin: '0.8em 0', border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '0.85em' }}
-                                      />
-                                    ) : (
-                                      <code {...rest} className="bg-black/5 dark:bg-white/10 px-1 py-0.5 rounded font-mono text-[0.9em]">
-                                        {children}
-                                      </code>
-                                    );
-                                  }
-                                }}
+                                remarkPlugins={REMARK_PLUGINS}
+                                components={COMPONENTS}
                              >
                                 {msg.text}
                              </ReactMarkdown>
