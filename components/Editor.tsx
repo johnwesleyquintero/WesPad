@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import { CursorPosition } from '../types';
 
 interface EditorProps {
@@ -11,6 +11,9 @@ interface EditorProps {
     fontFamily: string;
     wordWrap: boolean;
   };
+  initialScrollTop?: number;
+  initialSelection?: { start: number; end: number };
+  onSaveState: (state: { scrollTop: number; selection: { start: number; end: number } }) => void;
 }
 
 const AUTO_CLOSE_PAIRS: Record<string, string> = {
@@ -26,9 +29,39 @@ export const Editor: React.FC<EditorProps> = ({
   onChange, 
   onCursorChange,
   editorRef,
-  settings
+  settings,
+  initialScrollTop,
+  initialSelection,
+  onSaveState
 }) => {
   
+  // Restore state on mount (which happens on tab switch due to key prop)
+  useLayoutEffect(() => {
+    if (editorRef.current) {
+        if (typeof initialScrollTop === 'number') {
+            editorRef.current.scrollTop = initialScrollTop;
+        }
+        if (initialSelection) {
+            editorRef.current.setSelectionRange(initialSelection.start, initialSelection.end);
+        }
+    }
+  }, []);
+
+  // Save state on unmount
+  useEffect(() => {
+    return () => {
+        if (editorRef.current) {
+            onSaveState({
+                scrollTop: editorRef.current.scrollTop,
+                selection: {
+                    start: editorRef.current.selectionStart,
+                    end: editorRef.current.selectionEnd
+                }
+            });
+        }
+    };
+  }, [onSaveState]);
+
   const handleSelect = () => {
     if (editorRef.current) {
       const { value, selectionStart } = editorRef.current;

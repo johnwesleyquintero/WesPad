@@ -6,6 +6,8 @@ export interface Tab {
   isCustomTitle?: boolean;
   history?: string[];
   historyIndex?: number;
+  scrollTop?: number;
+  selection?: { start: number; end: number };
 }
 
 export interface CursorPosition {

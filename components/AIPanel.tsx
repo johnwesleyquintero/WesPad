@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings } from 'lucide-react';
-import { Chat } from '@google/genai';
+import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings, Loader2 } from 'lucide-react';
+import { Chat, GenerateContentResponse } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import * as geminiService from '../services/geminiService';
 
@@ -20,6 +20,7 @@ interface Message {
   text: string;
   isError?: boolean;
   isAuthError?: boolean;
+  isStreaming?: boolean;
 }
 
 export const AIPanel: React.FC<AIPanelProps> = ({ 
@@ -118,16 +119,38 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     }
 
     try {
-        const result = await chatSession.sendMessage({ message: fullPrompt });
-        const responseText = result.text;
+        const responseStream = await chatSession.sendMessageStream({ message: fullPrompt });
         
-        if (responseText) {
-            setMessages(prev => [...prev, { 
-                id: (Date.now() + 1).toString(), 
-                role: 'model', 
-                text: responseText 
-            }]);
+        const responseId = (Date.now() + 1).toString();
+        // Add placeholder for streaming response
+        setMessages(prev => [...prev, {
+            id: responseId,
+            role: 'model',
+            text: '',
+            isStreaming: true
+        }]);
+
+        let accumulatedText = '';
+
+        for await (const chunk of responseStream) {
+            const c = chunk as GenerateContentResponse;
+            const newText = c.text || '';
+            accumulatedText += newText;
+            
+            setMessages(prev => prev.map(msg => 
+                msg.id === responseId 
+                    ? { ...msg, text: accumulatedText } 
+                    : msg
+            ));
         }
+
+        // Mark streaming as done
+        setMessages(prev => prev.map(msg => 
+            msg.id === responseId 
+                ? { ...msg, isStreaming: false } 
+                : msg
+        ));
+
     } catch (e: any) {
         console.error(e);
         let errorText = "Something went wrong.";
@@ -157,9 +180,8 @@ export const AIPanel: React.FC<AIPanelProps> = ({
 
   const handleClearChat = () => {
     setMessages([{ id: 'welcome', role: 'model', text: "Chat cleared. Ready for new ideas!" }]);
-    // Reset session to clear context window
-    // Re-trigger useEffect dependency indirectly or just manually create session
-    // Actually relying on apiKey prop is best, but we can try to refresh
+    
+    // Refresh session to clear context
     let envKey = '';
     try {
         if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
@@ -223,7 +245,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
         {messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
              <div className={`
-                max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm
+                max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm relative
                 ${msg.role === 'user' 
                     ? 'bg-text text-background rounded-br-none' 
                     : 'bg-surface text-text border border-border rounded-bl-none'}
@@ -232,6 +254,9 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                 {msg.role === 'model' ? (
                      <div className="prose prose-neutral dark:prose-invert prose-xs max-w-none leading-relaxed">
                          <ReactMarkdown>{msg.text}</ReactMarkdown>
+                         {msg.isStreaming && (
+                             <span className="inline-block w-2 h-4 align-middle ml-1 bg-muted animate-pulse"></span>
+                         )}
                      </div>
                 ) : (
                     <div className="whitespace-pre-wrap">{msg.text}</div>
@@ -250,7 +275,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
              </div>
              
              {/* AI Message Actions */}
-             {msg.role === 'model' && !msg.isError && msg.id !== 'welcome' && (
+             {msg.role === 'model' && !msg.isError && msg.id !== 'welcome' && !msg.isStreaming && (
                  <div className="flex items-center mt-1 space-x-1 ml-1">
                      <button 
                         onClick={() => navigator.clipboard.writeText(msg.text)}
@@ -278,15 +303,12 @@ export const AIPanel: React.FC<AIPanelProps> = ({
              )}
           </div>
         ))}
-
-        {isLoading && (
-            <div className="flex items-start">
+        
+        {/* Loading Indicator (Initial Request) */}
+        {isLoading && messages[messages.length - 1]?.role === 'user' && (
+             <div className="flex items-start">
                 <div className="bg-surface border border-border rounded-2xl rounded-bl-none px-4 py-3 shadow-sm">
-                    <div className="flex space-x-1">
-                        <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                    </div>
+                    <Loader2 size={16} className="animate-spin text-muted" />
                 </div>
             </div>
         )}

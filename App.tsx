@@ -178,6 +178,10 @@ const App: React.FC = () => {
     setViewMode(ViewMode.EDIT);
   };
 
+  const handleSaveEditorState = (id: string, state: { scrollTop: number; selection: { start: number; end: number } }) => {
+    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...state } : t));
+  };
+
   // --- Handlers ---
 
   const handleRenameTab = (id: string, newTitle: string) => {
@@ -768,11 +772,15 @@ const App: React.FC = () => {
         {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && (
           <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2 border-r border-border' : 'w-full'} h-full bg-background`}>
             <Editor 
+              key={activeTabId}
               content={activeTab.content}
               onChange={handleUpdateContent}
               onCursorChange={setCursor}
               editorRef={editorRef}
               settings={editorSettings}
+              initialScrollTop={activeTab.scrollTop}
+              initialSelection={activeTab.selection}
+              onSaveState={(state) => handleSaveEditorState(activeTabId, state)}
             />
           </div>
         )}
@@ -780,7 +788,10 @@ const App: React.FC = () => {
         {/* Preview Pane */}
         {(viewMode === ViewMode.PREVIEW || viewMode === ViewMode.SPLIT) && (
           <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2' : 'w-full'} h-full bg-surface`}>
-            <MarkdownPreview content={activeTab.content} />
+            <MarkdownPreview 
+                content={activeTab.content} 
+                fontFamily={editorSettings.fontFamily}
+            />
           </div>
         )}
       </div>
