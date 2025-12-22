@@ -1,29 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings, Loader2, ArrowRight } from 'lucide-react';
-import { Chat, GenerateContentResponse } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import * as geminiService from '../services/geminiService';
+import { useAI } from '../hooks/useAI';
 
 interface AIPanelProps {
   isOpen: boolean;
   onClose: () => void;
   selectedText: string;
-  contextText: string; // Fallback context if no selection (e.g. last 2000 chars)
+  contextText: string; 
   onReplaceText: (newText: string) => void;
   onAppendText: (newText: string) => void;
   apiKey: string;
   onOpenSettings: () => void;
-}
-
-interface Message {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-  isError?: boolean;
-  isAuthError?: boolean;
-  isStreaming?: boolean;
 }
 
 type ToneType = 'Professional' | 'Casual' | 'Creative' | 'Academic' | 'Concise';
@@ -38,38 +28,12 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   apiKey,
   onOpenSettings
 }) => {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 'welcome', role: 'model', text: "Hi! I'm your writing assistant. Select text to rewrite, or click 'Continue' to keep writing." }
-  ]);
+  const { messages, isLoading, sendMessage, clearChat, hasKey } = useAI(apiKey);
   const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [chatSession, setChatSession] = useState<Chat | null>(null);
   const [activeTone, setActiveTone] = useState<ToneType>('Professional');
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Initialize Chat Session
-  useEffect(() => {
-    // Safe check for process.env.API_KEY
-    let envKey = '';
-    try {
-        if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-            envKey = process.env.API_KEY;
-        }
-    } catch (e) { /* ignore */ }
-
-    if (apiKey || envKey) {
-      try {
-        const session = geminiService.createChatSession(apiKey, "You are a helpful, concise writing assistant embedded in a Markdown editor. Keep answers brief and relevant to writing tasks.");
-        setChatSession(session);
-      } catch (e) {
-        console.error("Failed to init chat", e);
-      }
-    } else {
-        setChatSession(null);
-    }
-  }, [apiKey]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -85,136 +49,10 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     }
   }, [isOpen]);
 
-  const handleSendMessage = async (text: string, context?: string, overridePrompt?: string) => {
-    if (!text.trim()) return;
-    
-    const displayText = text;
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', text: displayText };
-    
-    // 1. Check Offline Status
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-         setMessages(prev => [...prev, userMsg, { 
-            id: (Date.now() + 1).toString(), 
-            role: 'model', 
-            text: "**Offline Mode**\n\nI cannot process requests while you are offline. Please check your internet connection.", 
-            isError: true 
-        }]);
-        setInputValue('');
-        return;
-    }
-
-    // 2. Check Configuration
-    if (!chatSession) {
-         setMessages(prev => [...prev, userMsg, {
-            id: (Date.now() + 1).toString(),
-            role: 'model',
-            text: "**Setup Required**\n\nPlease configure your Google Gemini API key in Settings to continue.",
-            isError: true,
-            isAuthError: true
-        }]);
-        setInputValue('');
-        return;
-    }
-
-    setIsLoading(true);
-    setMessages(prev => [...prev, userMsg]);
-    setInputValue('');
-
-    // Construct the actual prompt sending to AI
-    let fullPrompt = "";
-    
-    if (overridePrompt) {
-        fullPrompt = overridePrompt;
-    } else {
-        const toneInstruction = `Adopt a ${activeTone.toLowerCase()} tone.`;
-        
-        if (context) {
-            fullPrompt = `Context:\n"""\n${context}\n"""\n\n${toneInstruction}\nTask: ${text}`;
-        } else {
-            fullPrompt = `${toneInstruction}\nTask: ${text}`;
-        }
-    }
-
-    try {
-        const responseStream = await chatSession.sendMessageStream({ message: fullPrompt });
-        
-        const responseId = (Date.now() + 1).toString();
-        // Add placeholder for streaming response
-        setMessages(prev => [...prev, {
-            id: responseId,
-            role: 'model',
-            text: '',
-            isStreaming: true
-        }]);
-
-        let accumulatedText = '';
-
-        for await (const chunk of responseStream) {
-            const c = chunk as GenerateContentResponse;
-            const newText = c.text || '';
-            accumulatedText += newText;
-            
-            setMessages(prev => prev.map(msg => 
-                msg.id === responseId 
-                    ? { ...msg, text: accumulatedText } 
-                    : msg
-            ));
-        }
-
-        // Mark streaming as done
-        setMessages(prev => prev.map(msg => 
-            msg.id === responseId 
-                ? { ...msg, isStreaming: false } 
-                : msg
-        ));
-
-    } catch (e: any) {
-        console.error(e);
-        let errorText = "Something went wrong.";
-        let isAuthError = false;
-
-        // Categorize errors
-        if (e.message?.includes('API key') || e.status === 400 || e.status === 403) {
-            errorText = "**Authentication Failed**\n\nYour API Key appears to be invalid or has expired.";
-            isAuthError = true;
-        } else if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError') || e.message?.includes('network')) {
-            errorText = "**Network Error**\n\nUnable to reach Google's servers. Please check your connection.";
-        } else {
-            errorText = `**Error**\n\n${e.message || 'An unexpected error occurred.'}`;
-        }
-
-        setMessages(prev => [...prev, { 
-            id: (Date.now() + 1).toString(), 
-            role: 'model', 
-            text: errorText, 
-            isError: true,
-            isAuthError
-        }]);
-    } finally {
-        setIsLoading(false);
-    }
+  const onSend = (text: string, context?: string) => {
+      sendMessage(text, context, activeTone);
+      setInputValue('');
   };
-
-  const handleClearChat = () => {
-    setMessages([{ id: 'welcome', role: 'model', text: "Chat cleared. Ready for new ideas!" }]);
-    
-    // Refresh session to clear context
-    let envKey = '';
-    try {
-        if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-            envKey = process.env.API_KEY;
-        }
-    } catch (e) { /* ignore */ }
-    
-    if (apiKey || envKey) {
-        try {
-            const session = geminiService.createChatSession(apiKey, "You are a helpful, concise writing assistant embedded in a Markdown editor. Keep answers brief and relevant to writing tasks.");
-            setChatSession(session);
-        } catch(e) { console.error(e) }
-    }
-  };
-
-  const hasKey = !!apiKey || (typeof process !== 'undefined' && !!process.env?.API_KEY);
 
   if (!isOpen) return null;
 
@@ -228,7 +66,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
           <span>WesPad Assistant</span>
         </div>
         <div className="flex items-center space-x-1">
-             <button onClick={handleClearChat} className="p-1.5 text-muted hover:text-text rounded transition-colors" title="Clear Chat">
+             <button onClick={clearChat} className="p-1.5 text-muted hover:text-text rounded transition-colors" title="Clear Chat">
                 <Trash2 size={14} />
              </button>
             <button onClick={onClose} className="p-1.5 text-muted hover:text-text rounded transition-colors" title="Close">
@@ -393,13 +231,13 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                 {selectedText && (
                     <>
                     <button 
-                        onClick={() => handleSendMessage(`Rewrite this text to be more ${activeTone.toLowerCase()}.`, selectedText)}
+                        onClick={() => onSend(`Rewrite this text to be more ${activeTone.toLowerCase()}.`, selectedText)}
                         className="px-2 py-0.5 bg-background border border-border rounded hover:border-text transition-colors text-[10px]"
                     >
                         Rewrite
                     </button>
                     <button 
-                        onClick={() => handleSendMessage("Summarize this text.", selectedText)}
+                        onClick={() => onSend("Summarize this text.", selectedText)}
                         className="px-2 py-0.5 bg-background border border-border rounded hover:border-text transition-colors text-[10px]"
                     >
                         Summarize
@@ -407,7 +245,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                     </>
                 )}
                  <button 
-                    onClick={() => handleSendMessage(`Continue writing based on this context. Keep it ${activeTone.toLowerCase()}.`, selectedText || contextText)}
+                    onClick={() => onSend(`Continue writing based on this context. Keep it ${activeTone.toLowerCase()}.`, selectedText || contextText)}
                     className="flex items-center px-2 py-0.5 bg-background border border-border rounded hover:border-text transition-colors text-[10px]"
                     title="Generate continuation"
                 >
@@ -425,7 +263,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    handleSendMessage(inputValue, selectedText || contextText);
+                    onSend(inputValue, selectedText || contextText);
                 }
             }}
             placeholder={typeof navigator !== 'undefined' && !navigator.onLine ? "Offline" : selectedText ? `Ask to ${activeTone.toLowerCase()} rewrite...` : `Ask WesPad (${activeTone})...`}
@@ -433,7 +271,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             className="flex-1 bg-surface border border-border rounded-lg pl-3 pr-10 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-text/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all placeholder:text-muted/70"
           />
           <button
-            onClick={() => handleSendMessage(inputValue, selectedText || contextText)}
+            onClick={() => onSend(inputValue, selectedText || contextText)}
             disabled={!inputValue.trim() || isLoading || (typeof navigator !== 'undefined' && !navigator.onLine)}
             className="absolute right-1.5 bottom-1.5 p-1.5 bg-text text-background rounded-md hover:opacity-90 disabled:opacity-0 disabled:cursor-not-allowed transition-all"
           >
