@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { CursorPosition } from '../types';
 import * as TextUtils from '../utils/textManipulation';
-import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2, Info } from 'lucide-react';
+import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2 } from 'lucide-react';
 import { rewriteText } from '../services/geminiService';
 
 interface EditorProps {
@@ -36,7 +36,6 @@ export const Editor: React.FC<EditorProps> = ({
   onScroll
 }) => {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
-  const [toolbarVisible, setToolbarVisible] = useState(true);
 
   // Restore state on mount (which happens on tab switch due to key prop)
   useLayoutEffect(() => {
