@@ -58,7 +58,7 @@ Since WesPad is designed to be lightweight, it runs directly via ES Modules in t
 
 1.  **Clone the repo:**
     ```bash
-    git clone https://github.com/your-username/wespad.git
+    git clone https://github.com/johnwesleyquintero/wespad.git
     cd wespad
     ```
 
