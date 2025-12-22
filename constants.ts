@@ -31,6 +31,7 @@ export const DEFAULT_SETTINGS = {
   fontSize: 16,
   fontFamily: 'mono',
   wordWrap: true,
+  scrollSync: true,
 };
 
 export const AUTO_CLOSE_PAIRS: Record<string, string> = {

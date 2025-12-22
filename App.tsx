@@ -50,7 +50,12 @@ const App: React.FC = () => {
 
   // --- Refs ---
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Scroll Sync Locks
+  const isSyncingLeft = useRef(false);
+  const isSyncingRight = useRef(false);
 
   // --- Derived State ---
   const words = activeTab.content.trim().split(/\s+/).filter(word => word.length > 0);
@@ -85,6 +90,45 @@ const App: React.FC = () => {
     setApiKey(key);
     localStorage.setItem(STORAGE_KEYS.API_KEY, key);
     addToast('API Key Saved', 'success');
+  };
+
+  // --- Scroll Sync Handlers ---
+  const handleEditorScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (!editorSettings.scrollSync || viewMode !== ViewMode.SPLIT) return;
+    if (isSyncingRight.current) {
+        isSyncingRight.current = false;
+        return;
+    }
+    
+    if (previewRef.current && editorRef.current) {
+        isSyncingLeft.current = true;
+        const editor = editorRef.current;
+        const preview = previewRef.current;
+        
+        const percentage = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
+        const targetScroll = percentage * (preview.scrollHeight - preview.clientHeight);
+        
+        preview.scrollTop = targetScroll;
+    }
+  };
+
+  const handlePreviewScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!editorSettings.scrollSync || viewMode !== ViewMode.SPLIT) return;
+    if (isSyncingLeft.current) {
+        isSyncingLeft.current = false;
+        return;
+    }
+
+    if (previewRef.current && editorRef.current) {
+        isSyncingRight.current = true;
+        const editor = editorRef.current;
+        const preview = previewRef.current;
+
+        const percentage = preview.scrollTop / (preview.scrollHeight - preview.clientHeight);
+        const targetScroll = percentage * (editor.scrollHeight - editor.clientHeight);
+        
+        editor.scrollTop = targetScroll;
+    }
   };
 
   // --- File Operations ---
@@ -329,12 +373,18 @@ const App: React.FC = () => {
               key={activeTabId} content={activeTab.content} onChange={updateContent} onCursorChange={setCursor} onSelectionStatsChange={setSelectionStats}
               editorRef={editorRef} settings={editorSettings} initialScrollTop={activeTab.scrollTop} initialSelection={activeTab.selection}
               onSaveState={(state) => updateTabState(activeTabId, state)} isZenMode={isZenMode}
+              onScroll={handleEditorScroll}
             />
           </div>
         )}
         {(viewMode === ViewMode.PREVIEW || viewMode === ViewMode.SPLIT) && (
           <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2' : 'w-full'} h-full bg-surface`}>
-            <MarkdownPreview content={activeTab.content} fontFamily={editorSettings.fontFamily} />
+            <MarkdownPreview 
+                ref={previewRef}
+                content={activeTab.content} 
+                fontFamily={editorSettings.fontFamily} 
+                onScroll={handlePreviewScroll}
+            />
           </div>
         )}
       </div>

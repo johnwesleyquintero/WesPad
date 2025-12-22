@@ -17,6 +17,7 @@ interface EditorProps {
   initialSelection?: { start: number; end: number };
   onSaveState: (state: { scrollTop: number; selection: { start: number; end: number } }) => void;
   isZenMode: boolean;
+  onScroll?: (e: React.UIEvent<HTMLTextAreaElement>) => void;
 }
 
 export const Editor: React.FC<EditorProps> = ({ 
@@ -29,7 +30,8 @@ export const Editor: React.FC<EditorProps> = ({
   initialScrollTop,
   initialSelection,
   onSaveState,
-  isZenMode
+  isZenMode,
+  onScroll
 }) => {
   
   // Restore state on mount (which happens on tab switch due to key prop)
@@ -198,6 +200,7 @@ export const Editor: React.FC<EditorProps> = ({
     <div className={`w-full h-full flex justify-center bg-background overflow-hidden ${isZenMode ? 'items-start pt-10' : ''}`}>
         <textarea
         ref={editorRef}
+        onScroll={onScroll}
         className={`
             h-full bg-background text-text p-4 pb-96 resize-none focus:outline-none 
             transition-all duration-300

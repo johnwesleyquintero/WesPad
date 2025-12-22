@@ -10,8 +10,9 @@ interface SettingsModalProps {
     fontSize: number;
     fontFamily: string;
     wordWrap: boolean;
+    scrollSync: boolean;
   };
-  onSaveEditorSettings: (settings: { fontSize: number; fontFamily: string; wordWrap: boolean }) => void;
+  onSaveEditorSettings: (settings: { fontSize: number; fontFamily: string; wordWrap: boolean; scrollSync: boolean }) => void;
   theme: 'light' | 'dark';
   onSetTheme: (theme: 'light' | 'dark') => void;
 }
@@ -162,21 +163,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </div>
 
-              {/* Word Wrap */}
-              <div className="flex items-center justify-between bg-background border border-border rounded px-3 py-3">
-                <span className="text-sm text-text">Word Wrap</span>
-                <button
-                  onClick={() => setLocalSettings({ ...localSettings, wordWrap: !localSettings.wordWrap })}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${
-                    localSettings.wordWrap ? 'bg-text' : 'bg-muted'
-                  }`}
-                >
-                  <div
-                    className={`absolute top-1 left-1 w-3 h-3 rounded-full transition-transform bg-background ${
-                      localSettings.wordWrap ? 'translate-x-5' : 'translate-x-0'
+              {/* Toggles */}
+              <div className="space-y-3">
+                {/* Word Wrap */}
+                <div className="flex items-center justify-between bg-background border border-border rounded px-3 py-3">
+                    <span className="text-sm text-text">Word Wrap</span>
+                    <button
+                    onClick={() => setLocalSettings({ ...localSettings, wordWrap: !localSettings.wordWrap })}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${
+                        localSettings.wordWrap ? 'bg-text' : 'bg-muted'
                     }`}
-                  />
-                </button>
+                    >
+                    <div
+                        className={`absolute top-1 left-1 w-3 h-3 rounded-full transition-transform bg-background ${
+                        localSettings.wordWrap ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                    />
+                    </button>
+                </div>
+
+                {/* Scroll Sync */}
+                <div className="flex items-center justify-between bg-background border border-border rounded px-3 py-3">
+                    <span className="text-sm text-text">Synchronize Scroll</span>
+                    <button
+                    onClick={() => setLocalSettings({ ...localSettings, scrollSync: !localSettings.scrollSync })}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${
+                        localSettings.scrollSync ? 'bg-text' : 'bg-muted'
+                    }`}
+                    >
+                    <div
+                        className={`absolute top-1 left-1 w-3 h-3 rounded-full transition-transform bg-background ${
+                        localSettings.scrollSync ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                    />
+                    </button>
+                </div>
               </div>
             </div>
           </div>
