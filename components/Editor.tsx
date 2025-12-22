@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { CursorPosition } from '../types';
 import * as TextUtils from '../utils/textManipulation';
 import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2, Link as LinkIcon, CheckSquare } from 'lucide-react';
@@ -6,7 +6,7 @@ import { rewriteText } from '../services/geminiService';
 
 interface EditorProps {
   content: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, selection?: { start: number; end: number }) => void;
   onCursorChange: (pos: CursorPosition) => void;
   onSelectionStatsChange?: (stats: { wordCount: number; charCount: number }) => void;
   editorRef: React.RefObject<HTMLTextAreaElement>;
@@ -16,7 +16,7 @@ interface EditorProps {
     wordWrap: boolean;
   };
   initialScrollTop?: number;
-  initialSelection?: { start: number; end: number };
+  selection?: { start: number; end: number };
   onSaveState: (state: { scrollTop: number; selection: { start: number; end: number } }) => void;
   isZenMode: boolean;
   onScroll?: (e: React.UIEvent<HTMLTextAreaElement>) => void;
@@ -32,7 +32,7 @@ export const Editor: React.FC<EditorProps> = ({
   editorRef,
   settings,
   initialScrollTop,
-  initialSelection,
+  selection, // This is the selection from the Tab state (Undo/Redo source)
   onSaveState,
   isZenMode,
   onScroll,
@@ -40,18 +40,38 @@ export const Editor: React.FC<EditorProps> = ({
   onError
 }) => {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const prevSelectionRef = useRef(selection);
 
-  // Restore state on mount
+  // Restore scroll on mount
   useLayoutEffect(() => {
     if (editorRef.current) {
         if (typeof initialScrollTop === 'number') {
             editorRef.current.scrollTop = initialScrollTop;
         }
-        if (initialSelection) {
-            editorRef.current.setSelectionRange(initialSelection.start, initialSelection.end);
+        // Initial selection set on mount
+        if (selection) {
+            editorRef.current.setSelectionRange(selection.start, selection.end);
         }
     }
   }, []);
+
+  // Watch for external selection changes (Undo/Redo)
+  useEffect(() => {
+    // Check if the selection prop has changed and differs from the ref
+    if (selection !== prevSelectionRef.current) {
+        if (editorRef.current && selection) {
+            // Only update if content length allows it
+            if (editorRef.current.value.length >= selection.end) {
+                editorRef.current.setSelectionRange(selection.start, selection.end);
+                // We might need to handleSelect here if we want status bar update, 
+                // but usually status bar updates on poll or event. 
+                // Let's force a stats update manually just in case.
+                handleSelect();
+            }
+        }
+        prevSelectionRef.current = selection;
+    }
+  }, [selection, content]);
 
   // Save state on unmount
   useEffect(() => {
@@ -92,12 +112,19 @@ export const Editor: React.FC<EditorProps> = ({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
+    // Pass current selection to parent so it can be saved in history
+    onChange(e.target.value, { 
+        start: e.target.selectionStart, 
+        end: e.target.selectionEnd 
+    });
     handleSelect();
   };
 
   const applyMutation = (result: { newValue: string; newSelectionStart: number; newSelectionEnd: number }) => {
-    onChange(result.newValue);
+    // Update content and explicitly set the new selection in state
+    onChange(result.newValue, { start: result.newSelectionStart, end: result.newSelectionEnd });
+    
+    // Also force DOM update immediately to prevent jumpiness
     setTimeout(() => {
         if (editorRef.current) {
             editorRef.current.focus();
@@ -161,11 +188,14 @@ export const Editor: React.FC<EditorProps> = ({
         const rewritten = await rewriteText(text, apiKey);
         if (rewritten) {
             const newValue = editorRef.current.value.substring(0, start) + rewritten + editorRef.current.value.substring(end);
-            onChange(newValue);
+            const newEnd = start + rewritten.length;
+            
+            // Update state with new selection
+            onChange(newValue, { start, end: newEnd });
+            
             setTimeout(() => {
                 if(editorRef.current) {
                     editorRef.current.focus();
-                    const newEnd = start + rewritten.length;
                     editorRef.current.setSelectionRange(start, newEnd);
                     handleSelect();
                 }
@@ -311,9 +341,6 @@ export const Editor: React.FC<EditorProps> = ({
                 style={{ 
                     fontSize: `${settings.fontSize}px`,
                     lineHeight: '1.7',
-                    // Use CSS max() to calculate padding that centers the content up to a max-width, 
-                    // while keeping the element full width for correct scrollbar placement.
-                    // 64rem = max-w-5xl, 48rem = max-w-3xl
                     paddingLeft: `max(2rem, calc(50% - ${isZenMode ? '24rem' : '32rem'}))`,
                     paddingRight: `max(2rem, calc(50% - ${isZenMode ? '24rem' : '32rem'}))`
                 }}

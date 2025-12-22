@@ -9,6 +9,7 @@ interface MarkdownPreviewProps {
   content: string;
   fontFamily: string;
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+  isZenMode: boolean;
 }
 
 const CodeBlock = ({ children, className, ...rest }: any) => {
@@ -61,7 +62,7 @@ const CodeBlock = ({ children, className, ...rest }: any) => {
   );
 };
 
-export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(({ content, fontFamily, onScroll }, ref) => {
+export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(({ content, fontFamily, onScroll, isZenMode }, ref) => {
   const getFontClass = () => {
     switch(fontFamily) {
       case 'sans': return 'font-sans';
@@ -76,7 +77,17 @@ export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(
         onScroll={onScroll}
         className={`w-full h-full bg-surface overflow-y-auto transition-colors`}
     >
-       <div className={`mx-auto max-w-5xl p-8 prose prose-neutral dark:prose-invert prose-sm sm:prose-base max-w-none transition-colors ${getFontClass()}`}>
+       <div 
+          className={`
+            prose prose-neutral dark:prose-invert prose-sm sm:prose-base max-w-none transition-all duration-300 
+            ${getFontClass()}
+            ${isZenMode ? 'pt-16' : 'pt-24 pb-96'}
+          `}
+          style={{ 
+            paddingLeft: `max(2rem, calc(50% - ${isZenMode ? '24rem' : '32rem'}))`,
+            paddingRight: `max(2rem, calc(50% - ${isZenMode ? '24rem' : '32rem'}))`
+          }}
+       >
          {content.trim() ? (
            <ReactMarkdown
               remarkPlugins={[remarkGfm]}

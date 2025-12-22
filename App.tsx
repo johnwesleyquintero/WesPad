@@ -149,15 +149,23 @@ const App: React.FC = () => {
      if (editorRef.current) {
       const { selectionStart, selectionEnd, value } = editorRef.current;
       const newValue = value.substring(0, selectionStart) + text + value.substring(selectionEnd);
-      updateContent(newValue);
-      setTimeout(() => {
-          if(editorRef.current) {
-              editorRef.current.selectionStart = editorRef.current.selectionEnd = selectionStart + text.length;
-              editorRef.current.focus();
-          }
-      }, 0);
+      
+      // Calculate new cursor position (end of inserted text)
+      const newCursorPos = selectionStart + text.length;
+      
+      // Update content AND cursor in one go
+      updateContent(newValue, { start: newCursorPos, end: newCursorPos });
+      
       addToast('Text Replaced', 'success');
     }
+  };
+  
+  const appendText = (text: string) => {
+     const separator = activeTab.content.endsWith('\n') || activeTab.content === '' ? '' : '\n\n';
+     const newContent = activeTab.content + separator + text;
+     const newCursorPos = newContent.length;
+     
+     updateContent(newContent, { start: newCursorPos, end: newCursorPos });
   };
 
   // Derived State
@@ -209,7 +217,7 @@ const App: React.FC = () => {
             selectedText={getSelectedText()} 
             contextText={activeTab.content.slice(-2000)} 
             onReplaceText={replaceSelection} 
-            onAppendText={(t) => updateContent(activeTab.content + (activeTab.content.endsWith('\n')?'':'\n\n') + t)} 
+            onAppendText={appendText}
             apiKey={apiKey} 
             onOpenSettings={() => setIsSettingsOpen(true)} 
         />
@@ -236,7 +244,7 @@ const App: React.FC = () => {
               editorRef={editorRef} 
               settings={editorSettings} 
               initialScrollTop={activeTab.scrollTop} 
-              initialSelection={activeTab.selection}
+              selection={activeTab.selection}
               onSaveState={(state) => updateTabState(activeTabId, state)} 
               isZenMode={isZenMode}
               onScroll={handleEditorScroll}
@@ -252,6 +260,7 @@ const App: React.FC = () => {
                 content={activeTab.content} 
                 fontFamily={editorSettings.fontFamily} 
                 onScroll={handlePreviewScroll}
+                isZenMode={isZenMode}
             />
           </div>
         )}

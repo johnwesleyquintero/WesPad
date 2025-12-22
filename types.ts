@@ -4,7 +4,7 @@ export interface Tab {
   content: string;
   lastModified: number;
   isCustomTitle?: boolean;
-  history?: string[];
+  history?: { content: string; selection: { start: number; end: number } }[];
   historyIndex?: number;
   scrollTop?: number;
   selection?: { start: number; end: number };
