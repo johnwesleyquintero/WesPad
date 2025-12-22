@@ -1,6 +1,8 @@
-import React, { useEffect, useLayoutEffect } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { CursorPosition } from '../types';
 import * as TextUtils from '../utils/textManipulation';
+import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2, Info } from 'lucide-react';
+import { rewriteText } from '../services/geminiService';
 
 interface EditorProps {
   content: string;
@@ -33,7 +35,9 @@ export const Editor: React.FC<EditorProps> = ({
   isZenMode,
   onScroll
 }) => {
-  
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [toolbarVisible, setToolbarVisible] = useState(true);
+
   // Restore state on mount (which happens on tab switch due to key prop)
   useLayoutEffect(() => {
     if (editorRef.current) {
@@ -111,6 +115,49 @@ export const Editor: React.FC<EditorProps> = ({
 
     const result = TextUtils.handleFormatWrapper(state, wrapper);
     applyMutation(result);
+  };
+
+  const handleBlockFormat = (prefix: string) => {
+    if (!editorRef.current) return;
+    const state = {
+        value: editorRef.current.value,
+        selectionStart: editorRef.current.selectionStart,
+        selectionEnd: editorRef.current.selectionEnd
+    };
+    const result = TextUtils.toggleLinePrefix(state, prefix);
+    applyMutation(result);
+  };
+
+  const handleQuickAiRewrite = async () => {
+    if (!editorRef.current) return;
+    const start = editorRef.current.selectionStart;
+    const end = editorRef.current.selectionEnd;
+    const text = editorRef.current.value.substring(start, end);
+
+    if (!text.trim()) return;
+
+    setIsAiProcessing(true);
+    try {
+        const rewritten = await rewriteText(text);
+        if (rewritten) {
+            const newValue = editorRef.current.value.substring(0, start) + rewritten + editorRef.current.value.substring(end);
+            onChange(newValue);
+            // Move selection to end of rewritten text
+            setTimeout(() => {
+                if(editorRef.current) {
+                    editorRef.current.focus();
+                    const newEnd = start + rewritten.length;
+                    editorRef.current.setSelectionRange(start, newEnd);
+                    handleSelect();
+                }
+            }, 0);
+        }
+    } catch (error) {
+        console.error("AI Rewrite failed", error);
+        // Could dispatch a toast here via context if available, or just fail silently/log
+    } finally {
+        setIsAiProcessing(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -197,26 +244,71 @@ export const Editor: React.FC<EditorProps> = ({
   };
 
   return (
-    <div className={`w-full h-full flex justify-center bg-background overflow-hidden ${isZenMode ? 'items-start pt-10' : ''}`}>
-        <textarea
-        ref={editorRef}
-        onScroll={onScroll}
-        className={`
-            h-full bg-background text-text p-4 pb-96 resize-none focus:outline-none 
-            transition-all duration-300
-            ${getFontFamily()}
-            ${settings.wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'}
-            ${isZenMode ? 'max-w-3xl w-full border-none' : 'w-full'}
-        `}
-        style={{ fontSize: `${settings.fontSize}px` }}
-        value={content}
-        onChange={handleChange}
-        onSelect={handleSelect}
-        onKeyDown={handleKeyDown}
-        placeholder="Start writing..."
-        spellCheck={false}
-        autoFocus
-        />
+    <div className={`w-full h-full flex flex-col justify-start items-center bg-background overflow-hidden relative ${isZenMode ? 'pt-0' : ''}`}>
+        
+        {/* Editor Toolbar - Only show if not in Zen Mode, or make it autohide? Keeping it persistent for now unless zen mode active. */}
+        {!isZenMode && (
+            <div className="w-full flex items-center justify-center border-b border-border bg-background/95 backdrop-blur-sm z-10 transition-all select-none">
+                <div className="flex items-center space-x-1 py-1.5 px-2 overflow-x-auto no-scrollbar max-w-full">
+                    <ToolbarBtn onClick={() => handleBlockFormat('# ')} icon={<Heading1 size={14} />} title="Heading 1" />
+                    <ToolbarBtn onClick={() => handleBlockFormat('## ')} icon={<Heading2 size={14} />} title="Heading 2" />
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <ToolbarBtn onClick={() => handleFormat('**')} icon={<Bold size={14} />} title="Bold (Ctrl+B)" />
+                    <ToolbarBtn onClick={() => handleFormat('*')} icon={<Italic size={14} />} title="Italic (Ctrl+I)" />
+                    <ToolbarBtn onClick={() => handleFormat('`')} icon={<Code size={14} />} title="Inline Code" />
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <ToolbarBtn onClick={() => handleBlockFormat('> ')} icon={<Quote size={14} />} title="Blockquote" />
+                    <ToolbarBtn onClick={() => handleBlockFormat('- ')} icon={<List size={14} />} title="Bullet List" />
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <button 
+                        onClick={handleQuickAiRewrite}
+                        disabled={isAiProcessing}
+                        className={`
+                            flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-all
+                            ${isAiProcessing 
+                                ? 'bg-surface text-muted cursor-wait' 
+                                : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'}
+                        `}
+                        title="AI Rewrite Selection"
+                    >
+                        {isAiProcessing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                        <span>{isAiProcessing ? 'Thinking...' : 'Quick Polish'}</span>
+                    </button>
+                </div>
+            </div>
+        )}
+
+        <div className={`flex-1 w-full flex justify-center overflow-hidden ${isZenMode ? 'items-start pt-10' : ''}`}>
+             <textarea
+                ref={editorRef}
+                onScroll={onScroll}
+                className={`
+                    h-full bg-background text-text p-4 pb-96 resize-none focus:outline-none 
+                    transition-all duration-300
+                    ${getFontFamily()}
+                    ${settings.wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'}
+                    ${isZenMode ? 'max-w-3xl w-full border-none' : 'w-full'}
+                `}
+                style={{ fontSize: `${settings.fontSize}px` }}
+                value={content}
+                onChange={handleChange}
+                onSelect={handleSelect}
+                onKeyDown={handleKeyDown}
+                placeholder="Start writing..."
+                spellCheck={false}
+                autoFocus
+            />
+        </div>
     </div>
   );
 };
+
+const ToolbarBtn = ({ onClick, icon, title }: { onClick: () => void, icon: React.ReactNode, title: string }) => (
+    <button 
+        onClick={onClick}
+        className="p-1.5 text-muted hover:text-text hover:bg-surface rounded transition-colors"
+        title={title}
+    >
+        {icon}
+    </button>
+);

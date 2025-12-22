@@ -169,3 +169,38 @@ export const handleFormatWrapper = (state: TextState, wrapper: string): Mutation
     shouldPreventDefault: true
   };
 };
+
+export const toggleLinePrefix = (state: TextState, prefix: string): MutationResult => {
+  const { value, selectionStart, selectionEnd } = state;
+  
+  // Find start and end of the affected lines
+  const firstLineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+  let lastLineEnd = value.indexOf('\n', selectionEnd);
+  if (lastLineEnd === -1) lastLineEnd = value.length;
+
+  const content = value.substring(firstLineStart, lastLineEnd);
+  const lines = content.split('\n');
+
+  // Check if all lines already start with prefix (normalized)
+  const isAllPrefixed = lines.every(line => line.startsWith(prefix));
+
+  const newLines = lines.map(line => {
+    if (isAllPrefixed) {
+      return line.startsWith(prefix) ? line.substring(prefix.length) : line;
+    } else {
+      // Remove any existing heading/list prefix if we are applying a new one, to avoid "## # Title"
+      // Simple logic: If applying H1 (#), and it has H2 (##), strip H2 first.
+      return prefix + line;
+    }
+  });
+
+  const newContent = newLines.join('\n');
+  const newValue = value.substring(0, firstLineStart) + newContent + value.substring(lastLineEnd);
+
+  return {
+    newValue,
+    newSelectionStart: firstLineStart,
+    newSelectionEnd: firstLineStart + newContent.length,
+    shouldPreventDefault: true
+  };
+};
