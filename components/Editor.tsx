@@ -40,7 +40,6 @@ export const Editor: React.FC<EditorProps> = ({
   onError
 }) => {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
-  const [showToolbar, setShowToolbar] = useState(true);
 
   // Restore state on mount
   useLayoutEffect(() => {
@@ -256,13 +255,13 @@ export const Editor: React.FC<EditorProps> = ({
   return (
     <div className={`w-full h-full flex flex-col items-center bg-background relative group ${isZenMode ? 'pt-0' : ''}`}>
         
-        {/* Floating Toolbar - Visible on hover or when not in Zen */}
+        {/* Floating Toolbar - Visible when not in Zen */}
         {!isZenMode && (
             <div className={`
                 absolute top-6 left-1/2 -translate-x-1/2 z-20 
                 bg-surface/90 backdrop-blur-md border border-border/50 shadow-lg rounded-full 
                 py-1.5 px-3 transition-all duration-300 ease-in-out
-                ${showToolbar ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}
+                opacity-100 translate-y-0
             `}>
                 <div className="flex items-center space-x-1">
                     <ToolbarBtn onClick={() => handleBlockFormat('# ')} icon={<Heading1 size={15} />} title="Heading 1" />
@@ -300,8 +299,6 @@ export const Editor: React.FC<EditorProps> = ({
              <textarea
                 ref={editorRef}
                 onScroll={(e) => {
-                    if (e.currentTarget.scrollTop > 50) setShowToolbar(false);
-                    else setShowToolbar(true);
                     if (onScroll) onScroll(e);
                 }}
                 className={`
