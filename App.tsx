@@ -6,6 +6,7 @@ import { StatusBar } from './components/StatusBar';
 import { MarkdownPreview } from './components/MarkdownPreview';
 import { AIPanel } from './components/AIPanel';
 import { SettingsModal } from './components/SettingsModal';
+import { FindReplaceBar } from './components/FindReplaceBar';
 import { Sparkles } from 'lucide-react';
 
 const STORAGE_KEY_TABS = 'wespad_tabs';
@@ -47,6 +48,7 @@ const App: React.FC = () => {
   const [isSaved, setIsSaved] = useState(true); 
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isFindOpen, setIsFindOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [editorSettings, setEditorSettings] = useState(DEFAULT_SETTINGS);
 
@@ -197,6 +199,80 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // --- Find & Replace Logic ---
+  
+  const handleFindNext = (query: string, reverse: boolean = false) => {
+      if (!editorRef.current || !query) return;
+      
+      const textarea = editorRef.current;
+      const text = textarea.value;
+      const startPos = reverse ? textarea.selectionStart : textarea.selectionEnd;
+      let nextIndex = -1;
+
+      if (reverse) {
+          const textBefore = text.substring(0, startPos);
+          nextIndex = textBefore.lastIndexOf(query);
+          if (nextIndex === -1) {
+              // Wrap around to end
+              nextIndex = text.lastIndexOf(query);
+          }
+      } else {
+          nextIndex = text.indexOf(query, startPos);
+          if (nextIndex === -1) {
+              // Wrap around to start
+              nextIndex = text.indexOf(query);
+          }
+      }
+
+      if (nextIndex !== -1) {
+          textarea.focus();
+          textarea.setSelectionRange(nextIndex, nextIndex + query.length);
+          // Manually trigger cursor update visuals if needed, though Editor handles onSelect
+          // Scrolling is handled natively by setSelectionRange usually, but sometimes needs help:
+          const line = text.substring(0, nextIndex).split('\n').length;
+          // Approximate scrolling logic handled by browser focus
+      }
+  };
+
+  const handleReplace = (find: string, replace: string) => {
+      if (!editorRef.current || !find) return;
+      
+      const textarea = editorRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentSelection = textarea.value.substring(start, end);
+
+      if (currentSelection === find) {
+          // Replace selection
+          const newVal = textarea.value.substring(0, start) + replace + textarea.value.substring(end);
+          handleUpdateContent(newVal);
+          
+          // Restore cursor and find next
+          setTimeout(() => {
+              if (editorRef.current) {
+                editorRef.current.setSelectionRange(start + replace.length, start + replace.length);
+                handleFindNext(find); 
+              }
+          }, 0);
+      } else {
+          // If not currently selected, just find next first
+          handleFindNext(find);
+      }
+  };
+
+  const handleReplaceAll = (find: string, replace: string) => {
+      if (!find) return;
+      // Global replace
+      // Escape regex special characters in find string
+      const escapedFind = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedFind, 'g');
+      const newVal = activeTab.content.replace(regex, replace);
+      
+      if (newVal !== activeTab.content) {
+        handleUpdateContent(newVal);
+      }
+  };
+
   // --- Keyboard Shortcuts ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -214,6 +290,13 @@ const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
          e.preventDefault();
          setIsAIPanelOpen(prev => !prev);
+         setIsFindOpen(false);
+      }
+      // Ctrl+F for Find
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+          e.preventDefault();
+          setIsFindOpen(prev => !prev);
+          setIsAIPanelOpen(false);
       }
     };
 
@@ -281,6 +364,16 @@ const App: React.FC = () => {
           onSaveApiKey={handleSaveApiKey}
           editorSettings={editorSettings}
           onSaveEditorSettings={setEditorSettings}
+        />
+
+        {/* Find & Replace Bar */}
+        <FindReplaceBar 
+            isOpen={isFindOpen}
+            onClose={() => setIsFindOpen(false)}
+            onFindNext={(q) => handleFindNext(q, false)}
+            onFindPrev={(q) => handleFindNext(q, true)}
+            onReplace={handleReplace}
+            onReplaceAll={handleReplaceAll}
         />
 
         {/* AI Floating Panel */}
