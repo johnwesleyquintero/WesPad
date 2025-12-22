@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   API_KEY: 'wespad_api_key',
   SETTINGS: 'wespad_settings',
   THEME: 'wespad_theme',
+  VIEW_MODE: 'wespad_view_mode',
 };
 
 export const DEFAULT_TAB: Tab = {

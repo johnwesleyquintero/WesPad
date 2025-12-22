@@ -102,9 +102,12 @@ export const handleSmartList = (state: TextState): MutationResult | null => {
     const num = parseInt(match[2]);
     nextBullet = `${num + 1}.`;
   }
-  // Handle Task List (Always empty box next)
-  else if (match[2].match(/[-*]\s\[[ x]\]/)) {
-    nextBullet = `- [ ]`;
+  // Handle Task List (Respect user's bullet choice of - or *)
+  else {
+    const taskMatch = match[2].match(/([-*])\s\[[ x]\]/);
+    if (taskMatch) {
+      nextBullet = `${taskMatch[1]} [ ]`;
+    }
   }
 
   const insertion = `\n${match[1]}${nextBullet}${match[3]}`;

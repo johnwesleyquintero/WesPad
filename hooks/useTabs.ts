@@ -71,9 +71,19 @@ export const useTabs = () => {
 
   const closeTab = useCallback((id: string) => {
     if (tabs.length === 1) {
-      // If only one tab, reset it instead of deleting
-      updateContent('');
-      setTabs(prev => prev.map(t => ({...t, history: [''], historyIndex: 0})));
+      // If only one tab, perform a hard reset instead of just clearing content
+      // This fixes the bug where a custom title persists on an empty "new" tab
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      
+      setTabs(prev => prev.map(t => ({
+        ...t,
+        title: 'Untitled',
+        isCustomTitle: false,
+        content: '',
+        history: [''], 
+        historyIndex: 0,
+        lastModified: Date.now()
+      })));
       return;
     }
 

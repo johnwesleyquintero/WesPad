@@ -56,6 +56,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const savedKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
     const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    const savedViewMode = localStorage.getItem(STORAGE_KEYS.VIEW_MODE);
 
     if (savedKey) setApiKey(savedKey);
     if (savedSettings) {
@@ -63,11 +64,20 @@ const App: React.FC = () => {
         setEditorSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
       } catch (e) { console.error("Failed to load settings", e); }
     }
+    if (savedViewMode && Object.values(ViewMode).includes(savedViewMode as ViewMode)) {
+        setViewMode(savedViewMode as ViewMode);
+    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(editorSettings));
   }, [editorSettings]);
+
+  // Persist View Mode
+  const handleChangeViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem(STORAGE_KEYS.VIEW_MODE, mode);
+  };
 
   // --- Toast Helpers ---
   const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -189,7 +199,7 @@ const App: React.FC = () => {
         />
         <CommandPalette 
            isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)}
-           actions={{ onNewTab: () => createTab('Untitled', ''), onOpenFile: handleOpenFile, onSaveAs: handleSaveAs, onExport: handleExport, onSettings: () => setIsSettingsOpen(true), onAI: () => setIsAIPanelOpen(true), onFind: () => setIsFindOpen(true), onToggleZen: () => setIsZenMode(p => !p), setViewMode }}
+           actions={{ onNewTab: () => createTab('Untitled', ''), onOpenFile: handleOpenFile, onSaveAs: handleSaveAs, onExport: handleExport, onSettings: () => setIsSettingsOpen(true), onAI: () => setIsAIPanelOpen(true), onFind: () => setIsFindOpen(true), onToggleZen: () => setIsZenMode(p => !p), setViewMode: handleChangeViewMode }}
         />
         <FindReplaceBar isOpen={isFindOpen} onClose={() => setIsFindOpen(false)} onFindNext={(q) => handleFindNext(q, false)} onFindPrev={(q) => handleFindNext(q, true)} onReplace={handleReplace} onReplaceAll={handleReplaceAll} />
         
@@ -239,7 +249,7 @@ const App: React.FC = () => {
 
       {!isZenMode && (
         <div className="flex-none print:hidden">
-          <StatusBar cursor={cursor} characterCount={activeTab.content.length} wordCount={wordCount} selectionStats={selectionStats} viewMode={viewMode} setViewMode={setViewMode} isSaved={isSaved} readingTime={readingTime} />
+          <StatusBar cursor={cursor} characterCount={activeTab.content.length} wordCount={wordCount} selectionStats={selectionStats} viewMode={viewMode} setViewMode={handleChangeViewMode} isSaved={isSaved} readingTime={readingTime} />
         </div>
       )}
     </div>
