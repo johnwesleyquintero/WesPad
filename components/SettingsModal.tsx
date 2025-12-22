@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Key, ExternalLink, Monitor, Moon, Sun } from 'lucide-react';
+import { X, Save, Key, ExternalLink, Monitor, Moon, Sun, Keyboard } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -54,6 +54,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { value: 16, label: 'Large' },
     { value: 18, label: 'Extra' },
     { value: 20, label: 'Huge' },
+  ];
+
+  const shortcuts = [
+    { keys: ['Ctrl', 'N'], description: 'New Tab' },
+    { keys: ['Ctrl', 'O'], description: 'Open File' },
+    { keys: ['Ctrl', 'S'], description: 'Save / Save As' },
+    { keys: ['Ctrl', 'K'], description: 'AI Tools' },
+    { keys: ['Ctrl', 'F'], description: 'Find & Replace' },
+    { keys: ['Ctrl', 'Z'], description: 'Undo' },
+    { keys: ['Ctrl', 'Y'], description: 'Redo' },
+    { keys: ['Alt', 'Z'], description: 'Zen Mode' },
+    { keys: ['Ctrl', 'Shift', 'P'], description: 'Command Palette' },
   ];
 
   return (
@@ -198,6 +210,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 Get API key <ExternalLink size={10} className="ml-1" />
               </a>
+            </div>
+          </div>
+
+          <div className="border-t border-border my-4"></div>
+
+          {/* Shortcuts Section */}
+          <div>
+            <h3 className="text-sm font-semibold mb-4 flex items-center uppercase tracking-wider text-text">
+              <Keyboard size={14} className="mr-2" />
+              Keyboard Shortcuts
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {shortcuts.map((shortcut, index) => (
+                <div key={index} className="flex items-center justify-between text-xs bg-background border border-border rounded px-2 py-1.5">
+                  <span className="text-muted">{shortcut.description}</span>
+                  <div className="flex gap-1">
+                    {shortcut.keys.map((k, i) => (
+                      <span key={i} className="bg-surface text-text border border-border rounded px-1 min-w-[20px] text-center font-mono text-[10px]">
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
