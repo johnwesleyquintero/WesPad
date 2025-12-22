@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings, WifiOff } from 'lucide-react';
+import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings } from 'lucide-react';
 import { Chat } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import * as geminiService from '../services/geminiService';
@@ -42,13 +42,20 @@ export const AIPanel: React.FC<AIPanelProps> = ({
 
   // Initialize Chat Session
   useEffect(() => {
-    if ((apiKey || (process.env.API_KEY))) {
+    // Safe check for process.env.API_KEY
+    let envKey = '';
+    try {
+        if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+            envKey = process.env.API_KEY;
+        }
+    } catch (e) { /* ignore */ }
+
+    if (apiKey || envKey) {
       try {
         const session = geminiService.createChatSession(apiKey, "You are a helpful, concise writing assistant embedded in a Markdown editor. Keep answers brief and relevant to writing tasks.");
         setChatSession(session);
       } catch (e) {
         console.error("Failed to init chat", e);
-        // If init fails (rare, usually just returns object), we can't do much here until they try to send
       }
     } else {
         setChatSession(null);
@@ -76,7 +83,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     const userMsg: Message = { id: Date.now().toString(), role: 'user', text: displayText };
     
     // 1. Check Offline Status
-    if (!navigator.onLine) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
          setMessages(prev => [...prev, userMsg, { 
             id: (Date.now() + 1).toString(), 
             role: 'model', 
@@ -130,7 +137,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
         if (e.message?.includes('API key') || e.status === 400 || e.status === 403) {
             errorText = "**Authentication Failed**\n\nYour API Key appears to be invalid or has expired.";
             isAuthError = true;
-        } else if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError')) {
+        } else if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError') || e.message?.includes('network')) {
             errorText = "**Network Error**\n\nUnable to reach Google's servers. Please check your connection.";
         } else {
             errorText = `**Error**\n\n${e.message || 'An unexpected error occurred.'}`;
@@ -151,7 +158,16 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   const handleClearChat = () => {
     setMessages([{ id: 'welcome', role: 'model', text: "Chat cleared. Ready for new ideas!" }]);
     // Reset session to clear context window
-    if (apiKey) {
+    // Re-trigger useEffect dependency indirectly or just manually create session
+    // Actually relying on apiKey prop is best, but we can try to refresh
+    let envKey = '';
+    try {
+        if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+            envKey = process.env.API_KEY;
+        }
+    } catch (e) { /* ignore */ }
+    
+    if (apiKey || envKey) {
         try {
             const session = geminiService.createChatSession(apiKey, "You are a helpful, concise writing assistant embedded in a Markdown editor. Keep answers brief and relevant to writing tasks.");
             setChatSession(session);
@@ -314,13 +330,13 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                     handleSendMessage(inputValue, selectedText);
                 }
             }}
-            placeholder={!navigator.onLine ? "Offline" : selectedText ? "Ask about selection..." : "Ask WesPad AI..."}
-            disabled={isLoading || !navigator.onLine}
+            placeholder={typeof navigator !== 'undefined' && !navigator.onLine ? "Offline" : selectedText ? "Ask about selection..." : "Ask WesPad AI..."}
+            disabled={isLoading || (typeof navigator !== 'undefined' && !navigator.onLine)}
             className="flex-1 bg-surface border border-border rounded-lg pl-3 pr-10 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-text/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all placeholder:text-muted/70"
           />
           <button
             onClick={() => handleSendMessage(inputValue, selectedText)}
-            disabled={!inputValue.trim() || isLoading || !navigator.onLine}
+            disabled={!inputValue.trim() || isLoading || (typeof navigator !== 'undefined' && !navigator.onLine)}
             className="absolute right-1.5 bottom-1.5 p-1.5 bg-text text-background rounded-md hover:opacity-90 disabled:opacity-0 disabled:cursor-not-allowed transition-all"
           >
             <Send size={14} />
