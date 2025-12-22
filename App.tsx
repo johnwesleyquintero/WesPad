@@ -132,6 +132,12 @@ const App: React.FC = () => {
       root.classList.remove('dark');
     }
     localStorage.setItem(STORAGE_KEY_THEME, theme);
+
+    // Sync meta theme-color for PWA/Mobile interface
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#ffffff');
+    }
   }, [theme]);
 
   // Save tabs on change (Exclude history from storage)
