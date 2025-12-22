@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { ViewMode } from '../types';
 
 interface ShortcutConfig {
   createTab: () => void;
