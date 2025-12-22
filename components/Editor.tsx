@@ -44,11 +44,13 @@ export const Editor: React.FC<EditorProps> = ({
   // Restore state on mount (which happens on tab switch due to key prop)
   useLayoutEffect(() => {
     if (editorRef.current) {
-        if (typeof initialScrollTop === 'number') {
-            editorRef.current.scrollTop = initialScrollTop;
-        }
+        // Order matters: Set selection first, then scroll.
+        // If selection is set last, browser tries to scroll cursor into view, overriding scrollTop.
         if (initialSelection) {
             editorRef.current.setSelectionRange(initialSelection.start, initialSelection.end);
+        }
+        if (typeof initialScrollTop === 'number') {
+            editorRef.current.scrollTop = initialScrollTop;
         }
     }
   }, []);

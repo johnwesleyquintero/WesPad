@@ -23,18 +23,15 @@ const getInitialTabs = (): Tab[] => {
 
 export const useTabs = () => {
   // 1. Lazy Initialization of State (Synchronous)
-  // This ensures that on first render, tabs and activeTabId are consistent.
   const [tabs, setTabs] = useState<Tab[]>(getInitialTabs);
   
   const [activeTabId, setActiveTabId] = useState<string>(() => {
     const savedActive = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB);
     const initialTabs = getInitialTabs();
     
-    // Ensure the saved active ID actually exists in our tabs
     if (savedActive && initialTabs.some(t => t.id === savedActive)) {
       return savedActive;
     }
-    // Fallback to the first tab if saved ID is invalid/missing
     return initialTabs[0].id;
   });
 
@@ -43,17 +40,22 @@ export const useTabs = () => {
   // History debounce ref
   const typingTimeoutRef = useRef<number | null>(null);
 
-  // 2. Persist to Storage on Change
+  // 2. Persist Active Tab Immediately
   useEffect(() => {
-    // Strip history before saving to storage to save space
-    const tabsToSave = tabs.map(({ history, historyIndex, ...rest }) => rest);
-    localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(tabsToSave));
     localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, activeTabId);
-    
-    // UI Feedback for saving
-    const timer = setTimeout(() => setIsSaved(true), 1000);
-    return () => clearTimeout(timer);
-  }, [tabs, activeTabId]);
+  }, [activeTabId]);
+
+  // 3. Persist Content to Storage (Debounced)
+  useEffect(() => {
+    const saveTimer = setTimeout(() => {
+        // Strip history before saving to save space/time
+        const tabsToSave = tabs.map(({ history, historyIndex, ...rest }) => rest);
+        localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(tabsToSave));
+        setIsSaved(true);
+    }, 1000); // 1s debounce for heavy IO
+
+    return () => clearTimeout(saveTimer);
+  }, [tabs]);
 
   // Derived state
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
@@ -97,9 +99,7 @@ export const useTabs = () => {
         // If we are closing the active tab, switch to a neighbor
         if (id === activeTabId) {
              const index = currentTabs.findIndex(t => t.id === id);
-             // Try to select the previous tab, or the next one (which slides into current index)
              const nextTab = newTabs[Math.max(0, index - 1)];
-             // Side effect: Update active ID
              setActiveTabId(nextTab.id);
         }
         
@@ -113,12 +113,13 @@ export const useTabs = () => {
         ? { ...tab, title: newTitle.trim() || 'Untitled', isCustomTitle: true, lastModified: Date.now() }
         : tab
     ));
+    setIsSaved(false); // Trigger save on rename
   }, []);
 
   const updateContent = useCallback((newContent: string) => {
     setIsSaved(false);
 
-    // Clear pending debounce
+    // Clear pending debounce for history
     if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
     }
