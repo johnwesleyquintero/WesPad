@@ -19,5 +19,14 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
+  ],
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "text/markdown": [".md"],
+        "text/plain": [".txt"]
+      }
+    }
   ]
 }

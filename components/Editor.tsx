@@ -13,6 +13,14 @@ interface EditorProps {
   };
 }
 
+const AUTO_CLOSE_PAIRS: Record<string, string> = {
+  '(': ')',
+  '[': ']',
+  '{': '}',
+  '"': '"',
+  '`': '`',
+};
+
 export const Editor: React.FC<EditorProps> = ({ 
   content, 
   onChange, 
@@ -87,10 +95,10 @@ export const Editor: React.FC<EditorProps> = ({
     }, 0);
   };
 
-  // Basic indentation handling for Tab key and Shortcuts
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const isMod = e.ctrlKey || e.metaKey;
 
+    // 1. Tab Indentation
     if (e.key === 'Tab') {
       e.preventDefault();
       if (!editorRef.current) return;
@@ -102,13 +110,106 @@ export const Editor: React.FC<EditorProps> = ({
       const newValue = value.substring(0, start) + '  ' + value.substring(end);
       onChange(newValue);
       
-      // Need to defer setting selection range after render
       setTimeout(() => {
         if(editorRef.current) {
             editorRef.current.selectionStart = editorRef.current.selectionEnd = start + 2;
         }
       }, 0);
       return;
+    }
+
+    // 2. Auto-Close Pairs
+    if (!isMod && AUTO_CLOSE_PAIRS[e.key]) {
+        e.preventDefault();
+        if (!editorRef.current) return;
+        
+        const start = editorRef.current.selectionStart;
+        const end = editorRef.current.selectionEnd;
+        const value = editorRef.current.value;
+        const char = e.key;
+        const closeChar = AUTO_CLOSE_PAIRS[char];
+
+        // Wrap selection if exists
+        if (start !== end) {
+            const selected = value.substring(start, end);
+            const newValue = value.substring(0, start) + char + selected + closeChar + value.substring(end);
+            onChange(newValue);
+            setTimeout(() => {
+                if (editorRef.current) {
+                   editorRef.current.selectionStart = start + 1;
+                   editorRef.current.selectionEnd = end + 1; 
+                }
+            }, 0);
+        } else {
+            // Insert pair
+            const newValue = value.substring(0, start) + char + closeChar + value.substring(end);
+            onChange(newValue);
+            setTimeout(() => {
+                if (editorRef.current) {
+                    editorRef.current.selectionStart = editorRef.current.selectionEnd = start + 1;
+                }
+            }, 0);
+        }
+        return;
+    }
+
+    // 3. Skip over closing pair if typed
+    if (!isMod && Object.values(AUTO_CLOSE_PAIRS).includes(e.key)) {
+        if (!editorRef.current) return;
+        const start = editorRef.current.selectionStart;
+        const value = editorRef.current.value;
+        if (value[start] === e.key) {
+             e.preventDefault();
+             editorRef.current.selectionStart = start + 1;
+             editorRef.current.selectionEnd = start + 1;
+             return;
+        }
+    }
+
+    // 4. Smart Lists (Enter)
+    if (e.key === 'Enter') {
+        if (!editorRef.current) return;
+        const start = editorRef.current.selectionStart;
+        const value = editorRef.current.value;
+        
+        const lines = value.substring(0, start).split('\n');
+        const currentLine = lines[lines.length - 1];
+        
+        // Regex for unordered (- or *) or ordered (1.)
+        const match = currentLine.match(/^(\s*)([-*]|\d+\.)(\s+)/);
+        
+        if (match) {
+            // Check if user is breaking out of list (empty list item)
+            // match[0] is the whole prefix "  - "
+            if (currentLine.trim() === match[2]) { 
+                 e.preventDefault();
+                 // Remove the current line content (the bullet)
+                 const lineStartPos = value.lastIndexOf('\n', start - 1) + 1;
+                 const newValue = value.substring(0, lineStartPos) + '\n' + value.substring(start);
+                 onChange(newValue);
+                 return;
+            }
+
+            e.preventDefault();
+            let nextBullet = match[2];
+            // Increment number if ordered list
+            if (match[2].match(/\d+\./)) {
+                const num = parseInt(match[2]);
+                nextBullet = `${num + 1}.`;
+            }
+            
+            const insertion = `\n${match[1]}${nextBullet}${match[3]}`;
+            const newValue = value.substring(0, start) + insertion + value.substring(editorRef.current.selectionEnd);
+            onChange(newValue);
+            
+            setTimeout(() => {
+                if(editorRef.current) {
+                    editorRef.current.selectionStart = editorRef.current.selectionEnd = start + insertion.length;
+                    handleSelect(); // update cursor stats
+                }
+            }, 0);
+            return;
+        }
     }
 
     // Bold: Ctrl+B

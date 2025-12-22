@@ -25,9 +25,9 @@ const DEFAULT_TAB: Tab = {
 A sovereign, local-first, AI-optional writing pad.
 
 ## New Features
+- **Smart Typing**: Auto-lists and auto-closing brackets.
+- **Drag & Drop**: Drop files here to open them.
 - **Zen Mode**: Press \`Alt+Z\` to focus.
-- **Reading Time**: See estimate in the footer.
-- **Scroll Past End**: Type comfortably in the middle of the screen.
 
 Start typing...
 `,
@@ -57,6 +57,7 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = useState('');
   const [editorSettings, setEditorSettings] = useState(DEFAULT_SETTINGS);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [isDragging, setIsDragging] = useState(false);
 
   // --- Refs ---
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -161,6 +162,22 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY_API, key);
   };
 
+  // --- Helpers ---
+  const createTab = (title: string, content: string) => {
+    const newTab: Tab = {
+        id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        title,
+        content,
+        lastModified: Date.now(),
+        isCustomTitle: true,
+        history: [content],
+        historyIndex: 0
+    };
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabId(newTab.id);
+    setViewMode(ViewMode.EDIT);
+  };
+
   // --- Handlers ---
 
   const handleRenameTab = (id: string, newTitle: string) => {
@@ -261,9 +278,7 @@ const App: React.FC = () => {
     typingTimeoutRef.current = window.setTimeout(() => {
         setTabs(prev => prev.map(tab => {
             if (tab.id === activeTabId) {
-                const history = tab.history || [tab.content]; // Current active content is already updated in step 2, but 'tab' here is from 'prev' state which might be slightly stale if batching, but functionally mostly correct for debounce.
-                // Actually we should rely on the `newContent` passed to the handler closure
-                
+                const history = tab.history || [tab.content];
                 const currentIndex = tab.historyIndex ?? 0;
                 const currentHistoryItem = history[currentIndex];
 
@@ -395,19 +410,7 @@ const App: React.FC = () => {
             });
             const file = await fileHandle.getFile();
             const text = await file.text();
-            
-            const newTab: Tab = {
-                id: `tab-${Date.now()}`,
-                title: file.name,
-                content: text,
-                lastModified: Date.now(),
-                isCustomTitle: true,
-                history: [text],
-                historyIndex: 0
-            };
-            setTabs(prev => [...prev, newTab]);
-            setActiveTabId(newTab.id);
-            setViewMode(ViewMode.EDIT);
+            createTab(file.name, text);
             
         } catch (err: any) {
              if (err.name !== 'AbortError') {
@@ -427,23 +430,40 @@ const App: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
         const text = e.target?.result as string;
-        
-        const newTab: Tab = {
-            id: `tab-${Date.now()}`,
-            title: file.name,
-            content: text,
-            lastModified: Date.now(),
-            isCustomTitle: true,
-            history: [text],
-            historyIndex: 0
-        };
-        setTabs(prev => [...prev, newTab]);
-        setActiveTabId(newTab.id);
-        setViewMode(ViewMode.EDIT);
+        createTab(file.name, text);
     };
     reader.readAsText(file);
     e.target.value = '';
   };
+
+  const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Only set false if leaving the main window (optional polish, keep simple for now)
+      if (e.relatedTarget === null) {
+          setIsDragging(false);
+      }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+      
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          for (const file of Array.from(e.dataTransfer.files)) {
+               const text = await file.text();
+               createTab(file.name, text);
+          }
+      }
+  };
+
 
   // --- Find & Replace Logic ---
   
@@ -614,7 +634,12 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="flex flex-col h-screen bg-background text-text font-sans overflow-hidden transition-colors duration-200">
+    <div 
+      className="flex flex-col h-screen bg-background text-text font-sans overflow-hidden transition-colors duration-200 relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Hidden File Input for Fallback Open */}
       <input 
         type="file" 
@@ -623,6 +648,13 @@ const App: React.FC = () => {
         className="hidden" 
         accept=".md,.txt,.json,.js,.ts,.tsx,.html,.css"
       />
+      
+      {/* Drag Overlay */}
+      {isDragging && (
+          <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm border-4 border-dashed border-text/20 flex items-center justify-center pointer-events-none">
+              <div className="text-2xl font-bold text-text">Drop files to open</div>
+          </div>
+      )}
 
       {/* 1. Header Area: Tab Bar (Hidden in Zen Mode) */}
       {!isZenMode && (
