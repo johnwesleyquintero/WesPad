@@ -227,10 +227,6 @@ const App: React.FC = () => {
       if (nextIndex !== -1) {
           textarea.focus();
           textarea.setSelectionRange(nextIndex, nextIndex + query.length);
-          // Manually trigger cursor update visuals if needed, though Editor handles onSelect
-          // Scrolling is handled natively by setSelectionRange usually, but sometimes needs help:
-          const line = text.substring(0, nextIndex).split('\n').length;
-          // Approximate scrolling logic handled by browser focus
       }
   };
 
