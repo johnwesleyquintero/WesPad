@@ -2,12 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Light Mode (Default variables) */
+  --background: #ffffff;
+  --surface: #f4f4f5;      /* neutral-100 */
+  --text: #171717;         /* neutral-900 */
+  --muted: #737373;        /* neutral-500 */
+  --border: #e5e5e5;       /* neutral-200 */
+  --accent: #000000;       /* black */
+}
+
+.dark {
+  /* Dark Mode */
+  --background: #0a0a0a;   /* neutral-950 */
+  --surface: #171717;      /* neutral-900 */
+  --text: #e5e5e5;         /* neutral-200 */
+  --muted: #737373;        /* neutral-500 */
+  --border: #262626;       /* neutral-800 */
+  --accent: #ffffff;       /* white */
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background-color: #0a0a0a; /* neutral-950 */
-  color: #e5e5e5; /* neutral-200 */
+  background-color: var(--background);
+  color: var(--text);
 }
 
 textarea:focus {

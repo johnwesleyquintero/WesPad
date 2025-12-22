@@ -8,12 +8,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0a0a0a', // neutral-950
-        surface: '#171717',    // neutral-900
-        text: '#e5e5e5',       // neutral-200
-        muted: '#737373',      // neutral-500
-        border: '#262626',     // neutral-800
-        accent: '#ffffff',     // white
+        background: 'var(--background)',
+        surface: 'var(--surface)',
+        text: 'var(--text)',
+        muted: 'var(--muted)',
+        border: 'var(--border)',
+        accent: 'var(--accent)',
       },
       fontFamily: {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],

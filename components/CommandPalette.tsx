@@ -94,15 +94,15 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-black/50 backdrop-blur-sm animate-in fade-in duration-100" onClick={onClose}>
       <div 
-        className="w-[500px] max-w-[90vw] bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        className="w-[500px] max-w-[90vw] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col text-text"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center p-3 border-b border-neutral-800">
-          <Command size={18} className="text-neutral-500 mr-3" />
+        <div className="flex items-center p-3 border-b border-border">
+          <Command size={18} className="text-muted mr-3" />
           <input
             ref={inputRef}
             type="text"
-            className="flex-1 bg-transparent text-white text-base placeholder-neutral-600 focus:outline-none"
+            className="flex-1 bg-transparent text-text text-base placeholder-muted focus:outline-none"
             placeholder="Type a command..."
             value={query}
             onChange={e => {
@@ -116,7 +116,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
         
         <div ref={listRef} className="max-h-[300px] overflow-y-auto py-1">
           {filteredCommands.length === 0 ? (
-            <div className="px-4 py-3 text-neutral-500 text-sm text-center">No matching commands</div>
+            <div className="px-4 py-3 text-muted text-sm text-center">No matching commands</div>
           ) : (
             filteredCommands.map((cmd, index) => (
               <button
@@ -127,19 +127,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
                   index === selectedIndex 
-                    ? 'bg-neutral-800 text-white' 
-                    : 'text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200'
+                    ? 'bg-background text-text' 
+                    : 'text-muted hover:bg-background/50 hover:text-text'
                 }`}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
                 <div className="flex items-center">
-                  <span className={`mr-3 ${index === selectedIndex ? 'text-white' : 'text-neutral-500'}`}>
+                  <span className={`mr-3 ${index === selectedIndex ? 'text-text' : 'text-muted'}`}>
                     {cmd.icon}
                   </span>
                   <span className="text-sm font-medium">{cmd.label}</span>
                 </div>
                 {cmd.shortcut && (
-                  <span className="text-xs text-neutral-600 font-mono bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800">
+                  <span className="text-xs text-muted font-mono bg-background px-1.5 py-0.5 rounded border border-border">
                     {cmd.shortcut}
                   </span>
                 )}
@@ -148,7 +148,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
           )}
         </div>
         
-        <div className="bg-neutral-950 border-t border-neutral-800 px-3 py-1.5 flex justify-between items-center text-[10px] text-neutral-600">
+        <div className="bg-background border-t border-border px-3 py-1.5 flex justify-between items-center text-[10px] text-muted">
           <div className="flex gap-2">
             <span>↑↓ to navigate</span>
             <span>↵ to select</span>

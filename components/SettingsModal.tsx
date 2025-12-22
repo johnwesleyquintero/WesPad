@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Key, ExternalLink, Monitor } from 'lucide-react';
+import { X, Save, Key, ExternalLink, Monitor, Moon, Sun } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,6 +12,8 @@ interface SettingsModalProps {
     wordWrap: boolean;
   };
   onSaveEditorSettings: (settings: { fontSize: number; fontFamily: string; wordWrap: boolean }) => void;
+  theme: 'light' | 'dark';
+  onSetTheme: (theme: 'light' | 'dark') => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -20,7 +22,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   apiKey,
   onSaveApiKey,
   editorSettings,
-  onSaveEditorSettings
+  onSaveEditorSettings,
+  theme,
+  onSetTheme
 }) => {
   const [keyInput, setKeyInput] = useState(apiKey);
   const [localSettings, setLocalSettings] = useState(editorSettings);
@@ -54,14 +58,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-neutral-900 border border-neutral-700 rounded-lg shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col text-text transition-colors">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-neutral-800 bg-neutral-950 flex-none">
-          <h2 className="text-lg font-semibold text-white flex items-center">
+        <div className="flex items-center justify-between p-4 border-b border-border bg-background flex-none">
+          <h2 className="text-lg font-semibold flex items-center">
             <span className="mr-2">Settings</span>
           </h2>
-          <button onClick={onClose} className="text-neutral-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-muted hover:text-text transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -71,15 +75,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           
           {/* Editor Appearance Section */}
           <div>
-            <h3 className="text-sm font-semibold text-white mb-4 flex items-center uppercase tracking-wider">
+            <h3 className="text-sm font-semibold mb-4 flex items-center uppercase tracking-wider text-text">
               <Monitor size={14} className="mr-2" />
-              Editor Appearance
+              Appearance
             </h3>
             
             <div className="space-y-4">
+              {/* Theme Toggle */}
+              <div>
+                <label className="block text-xs text-muted mb-2">Theme</label>
+                <div className="flex bg-background border border-border rounded p-1">
+                   <button
+                     onClick={() => onSetTheme('light')}
+                     className={`flex-1 flex items-center justify-center py-1.5 rounded text-xs transition-colors ${
+                       theme === 'light' 
+                         ? 'bg-surface text-text shadow-sm border border-border' 
+                         : 'text-muted hover:text-text'
+                     }`}
+                   >
+                     <Sun size={14} className="mr-1.5" />
+                     Light
+                   </button>
+                   <button
+                     onClick={() => onSetTheme('dark')}
+                     className={`flex-1 flex items-center justify-center py-1.5 rounded text-xs transition-colors ${
+                       theme === 'dark' 
+                         ? 'bg-surface text-text shadow-sm border border-border' 
+                         : 'text-muted hover:text-text'
+                     }`}
+                   >
+                     <Moon size={14} className="mr-1.5" />
+                     Dark
+                   </button>
+                </div>
+              </div>
+
               {/* Font Family */}
               <div>
-                <label className="block text-xs text-neutral-400 mb-2">Font Family</label>
+                <label className="block text-xs text-muted mb-2">Font Family</label>
                 <div className="grid grid-cols-3 gap-2">
                   {fonts.map(font => (
                     <button
@@ -87,8 +120,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       onClick={() => setLocalSettings({ ...localSettings, fontFamily: font.id })}
                       className={`px-3 py-2 rounded text-sm border transition-colors ${
                         localSettings.fontFamily === font.id
-                          ? 'bg-neutral-100 border-neutral-100 text-black font-medium'
-                          : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-500'
+                          ? 'bg-text text-background border-text font-medium'
+                          : 'bg-background border-border text-muted hover:border-text hover:text-text'
                       }`}
                     >
                       <span className={font.class}>{font.name}</span>
@@ -99,16 +132,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Font Size */}
               <div>
-                <label className="block text-xs text-neutral-400 mb-2">Font Size</label>
-                <div className="flex items-center space-x-2 bg-neutral-950 border border-neutral-800 rounded p-1">
+                <label className="block text-xs text-muted mb-2">Font Size</label>
+                <div className="flex items-center space-x-2 bg-background border border-border rounded p-1">
                   {fontSizes.map(size => (
                     <button
                       key={size.value}
                       onClick={() => setLocalSettings({ ...localSettings, fontSize: size.value })}
                       className={`flex-1 py-1 rounded text-xs transition-colors ${
                         localSettings.fontSize === size.value
-                          ? 'bg-neutral-800 text-white font-medium shadow-sm'
-                          : 'text-neutral-500 hover:text-neutral-300'
+                          ? 'bg-surface text-text font-medium shadow-sm border border-border'
+                          : 'text-muted hover:text-text'
                       }`}
                     >
                       {size.label}
@@ -118,17 +151,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Word Wrap */}
-              <div className="flex items-center justify-between bg-neutral-950 border border-neutral-800 rounded px-3 py-3">
-                <span className="text-sm text-neutral-300">Word Wrap</span>
+              <div className="flex items-center justify-between bg-background border border-border rounded px-3 py-3">
+                <span className="text-sm text-text">Word Wrap</span>
                 <button
                   onClick={() => setLocalSettings({ ...localSettings, wordWrap: !localSettings.wordWrap })}
                   className={`relative w-10 h-5 rounded-full transition-colors ${
-                    localSettings.wordWrap ? 'bg-white' : 'bg-neutral-700'
+                    localSettings.wordWrap ? 'bg-text' : 'bg-muted'
                   }`}
                 >
                   <div
-                    className={`absolute top-1 left-1 w-3 h-3 rounded-full transition-transform ${
-                      localSettings.wordWrap ? 'translate-x-5 bg-black' : 'translate-x-0 bg-neutral-400'
+                    className={`absolute top-1 left-1 w-3 h-3 rounded-full transition-transform bg-background ${
+                      localSettings.wordWrap ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -136,32 +169,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
-          <div className="border-t border-neutral-800 my-4"></div>
+          <div className="border-t border-border my-4"></div>
 
           {/* API Key Section */}
           <div>
-            <h3 className="text-sm font-semibold text-white mb-4 flex items-center uppercase tracking-wider">
+            <h3 className="text-sm font-semibold mb-4 flex items-center uppercase tracking-wider text-text">
               <Key size={14} className="mr-2" />
               AI Configuration
             </h3>
             
-            <label className="block text-xs text-neutral-400 mb-2">Google Gemini API Key</label>
+            <label className="block text-xs text-muted mb-2">Google Gemini API Key</label>
             <input
               type="password"
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
               placeholder="AIzaSy..."
-              className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-neutral-200 focus:outline-none focus:border-white transition-colors font-mono text-sm"
+              className="w-full bg-background border border-border rounded px-3 py-2 text-text focus:outline-none focus:border-text transition-colors font-mono text-sm"
               autoComplete="off"
             />
             
             <div className="mt-2 flex justify-between items-center">
-              <span className="text-[10px] text-neutral-500">Stored locally in your browser.</span>
+              <span className="text-[10px] text-muted">Stored locally in your browser.</span>
               <a 
                 href="https://aistudio.google.com/app/apikey" 
                 target="_blank" 
                 rel="noreferrer"
-                className="text-xs text-neutral-300 hover:text-white inline-flex items-center transition-colors underline decoration-neutral-600 underline-offset-2"
+                className="text-xs text-muted hover:text-text inline-flex items-center transition-colors underline decoration-muted underline-offset-2"
               >
                 Get API key <ExternalLink size={10} className="ml-1" />
               </a>
@@ -171,10 +204,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-neutral-950 border-t border-neutral-800 flex justify-end flex-none">
+        <div className="p-4 bg-background border-t border-border flex justify-end flex-none">
           <button
             onClick={handleSave}
-            className="bg-white hover:bg-neutral-200 text-black px-6 py-2 rounded-md text-sm font-bold flex items-center transition-colors"
+            className="bg-text hover:opacity-90 text-background px-6 py-2 rounded-md text-sm font-bold flex items-center transition-opacity"
           >
             <Save size={16} className="mr-2" />
             Save Changes

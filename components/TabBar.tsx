@@ -60,17 +60,17 @@ export const TabBar: React.FC<TabBarProps> = ({
   };
 
   return (
-    <div className="flex flex-row items-center bg-neutral-950 border-b border-neutral-800 h-10 overflow-x-auto select-none no-scrollbar">
+    <div className="flex flex-row items-center bg-background border-b border-border h-10 overflow-x-auto select-none no-scrollbar transition-colors">
       {tabs.map((tab) => (
         <div
           key={tab.id}
           onClick={() => onTabClick(tab.id)}
           className={`
             group flex items-center h-full px-3 min-w-[120px] max-w-[200px] 
-            border-r border-neutral-800 cursor-pointer transition-colors duration-100
+            border-r border-border cursor-pointer transition-colors duration-100
             ${activeTabId === tab.id 
-              ? 'bg-neutral-900 text-neutral-100 border-t-2 border-t-white' 
-              : 'bg-neutral-950 text-neutral-500 hover:bg-neutral-900 hover:text-neutral-300 border-t-2 border-t-transparent'}
+              ? 'bg-surface text-text border-t-2 border-t-text' 
+              : 'bg-background text-muted hover:bg-surface hover:text-text border-t-2 border-t-transparent'}
           `}
         >
           <FileText size={14} className="mr-2 opacity-50 flex-shrink-0" />
@@ -84,7 +84,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                 onBlur={handleSaveTitle}
                 onKeyDown={handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-neutral-800 text-white text-xs font-medium focus:outline-none w-full px-1 border border-neutral-600 rounded"
+                className="bg-background text-text text-xs font-medium focus:outline-none w-full px-1 border border-border rounded"
              />
           ) : (
              <span 
@@ -99,7 +99,7 @@ export const TabBar: React.FC<TabBarProps> = ({
           <button
             onClick={(e) => onTabClose(tab.id, e)}
             className={`
-              ml-2 p-0.5 rounded-full hover:bg-neutral-700 hover:text-white
+              ml-2 p-0.5 rounded-full hover:bg-muted/20 hover:text-text
               opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0
               ${activeTabId === tab.id ? 'opacity-100' : ''}
             `}
@@ -110,19 +110,19 @@ export const TabBar: React.FC<TabBarProps> = ({
       ))}
       <button
         onClick={onNewTab}
-        className="h-full px-3 text-neutral-500 hover:text-white hover:bg-neutral-900 transition-colors flex items-center justify-center border-r border-neutral-800"
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-r border-border"
         title="New Tab (Ctrl+N)"
       >
         <Plus size={16} />
       </button>
       
       {/* Spacer to fill rest of bar */}
-      <div className="flex-1 bg-neutral-950 h-full"></div>
+      <div className="flex-1 bg-background h-full"></div>
       
       {/* Open Button */}
       <button 
         onClick={onOpen}
-        className="h-full px-3 text-neutral-500 hover:text-white hover:bg-neutral-900 transition-colors flex items-center justify-center border-l border-neutral-800"
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
         title="Open File (Ctrl+O)"
       >
         <FolderOpen size={16} />
@@ -131,7 +131,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       {/* Save Button */}
       <button 
         onClick={onSave}
-        className="h-full px-3 text-neutral-500 hover:text-white hover:bg-neutral-900 transition-colors flex items-center justify-center border-l border-neutral-800"
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
         title="Save As (Ctrl+S)"
       >
         <Save size={16} />
@@ -140,7 +140,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       {/* Export Button */}
       <button 
         onClick={onExport}
-        className="h-full px-3 text-neutral-500 hover:text-white hover:bg-neutral-900 transition-colors flex items-center justify-center border-l border-neutral-800"
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
         title="Export File"
       >
         <Download size={16} />
@@ -149,7 +149,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       {/* Settings Button */}
       <button 
         onClick={onOpenSettings}
-        className="h-full px-3 text-neutral-500 hover:text-white hover:bg-neutral-900 transition-colors flex items-center justify-center border-l border-neutral-800"
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
         title="Settings"
       >
         <Settings size={16} />

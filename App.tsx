@@ -14,6 +14,7 @@ const STORAGE_KEY_TABS = 'wespad_tabs';
 const STORAGE_KEY_ACTIVE = 'wespad_active_tab';
 const STORAGE_KEY_API = 'wespad_api_key';
 const STORAGE_KEY_SETTINGS = 'wespad_settings';
+const STORAGE_KEY_THEME = 'wespad_theme';
 
 // Default initial state
 const DEFAULT_TAB: Tab = {
@@ -53,6 +54,7 @@ const App: React.FC = () => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [editorSettings, setEditorSettings] = useState(DEFAULT_SETTINGS);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
   // --- Refs ---
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -76,6 +78,7 @@ const App: React.FC = () => {
     const savedActive = localStorage.getItem(STORAGE_KEY_ACTIVE);
     const savedKey = localStorage.getItem(STORAGE_KEY_API);
     const savedSettings = localStorage.getItem(STORAGE_KEY_SETTINGS);
+    const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) as 'light' | 'dark';
     
     if (savedTabs) {
       try {
@@ -103,7 +106,26 @@ const App: React.FC = () => {
         console.error("Failed to load settings", e);
       }
     }
+
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+       // Optional: Auto-detect system preference if not set
+       // setTheme('light'); 
+       // Keeping default dark for now as per design principles, but user can switch.
+    }
   }, []);
+
+  // Theme Effect
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem(STORAGE_KEY_THEME, theme);
+  }, [theme]);
 
   // Save tabs on change
   useEffect(() => {
@@ -453,7 +475,7 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="flex flex-col h-screen bg-neutral-950 text-neutral-200 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-background text-text font-sans overflow-hidden transition-colors duration-200">
       {/* Hidden File Input for Fallback Open */}
       <input 
         type="file" 
@@ -489,6 +511,8 @@ const App: React.FC = () => {
           onSaveApiKey={handleSaveApiKey}
           editorSettings={editorSettings}
           onSaveEditorSettings={setEditorSettings}
+          theme={theme}
+          onSetTheme={setTheme}
         />
 
         <CommandPalette 
@@ -531,7 +555,7 @@ const App: React.FC = () => {
         {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && (
             <button 
                 onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
-                className="absolute top-4 right-6 z-40 bg-neutral-900/90 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-700 p-2 rounded-full shadow-lg backdrop-blur-sm transition-all"
+                className="absolute top-4 right-6 z-40 bg-surface/90 hover:bg-surface text-muted hover:text-text border border-border p-2 rounded-full shadow-lg backdrop-blur-sm transition-all"
                 title="Open AI Tools (Ctrl+K)"
             >
                 <Sparkles size={18} />
@@ -540,7 +564,7 @@ const App: React.FC = () => {
 
         {/* Editor Pane */}
         {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && (
-          <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2 border-r border-neutral-800' : 'w-full'} h-full bg-neutral-950`}>
+          <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2 border-r border-border' : 'w-full'} h-full bg-background`}>
             <Editor 
               content={activeTab.content}
               onChange={handleUpdateContent}
@@ -553,7 +577,7 @@ const App: React.FC = () => {
 
         {/* Preview Pane */}
         {(viewMode === ViewMode.PREVIEW || viewMode === ViewMode.SPLIT) && (
-          <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2' : 'w-full'} h-full bg-neutral-900`}>
+          <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2' : 'w-full'} h-full bg-surface`}>
             <MarkdownPreview content={activeTab.content} />
           </div>
         )}
