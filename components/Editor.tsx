@@ -70,6 +70,18 @@ export const Editor: React.FC<EditorProps> = ({
     };
   }, [onSaveState]);
 
+  const handleBlur = () => {
+    if (editorRef.current) {
+        onSaveState({
+            scrollTop: editorRef.current.scrollTop,
+            selection: {
+                start: editorRef.current.selectionStart,
+                end: editorRef.current.selectionEnd
+            }
+        });
+    }
+  };
+
   const handleSelect = () => {
     if (editorRef.current) {
       const { value, selectionStart, selectionEnd } = editorRef.current;
@@ -331,6 +343,7 @@ export const Editor: React.FC<EditorProps> = ({
                 value={content}
                 onChange={handleChange}
                 onSelect={handleSelect}
+                onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
                 placeholder="Start writing..."
                 spellCheck={false}
