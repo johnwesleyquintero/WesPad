@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { CursorPosition } from '../types';
 import * as TextUtils from '../utils/textManipulation';
-import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2, Link as LinkIcon, Strikethrough, CheckSquare, Type } from 'lucide-react';
+import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2, Link as LinkIcon, CheckSquare } from 'lucide-react';
 import { rewriteText } from '../services/geminiService';
 
 interface EditorProps {
