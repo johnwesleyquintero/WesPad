@@ -74,20 +74,22 @@ export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(
     <div 
         ref={ref}
         onScroll={onScroll}
-        className={`w-full h-full bg-surface overflow-y-auto p-8 prose prose-neutral dark:prose-invert prose-sm sm:prose-base max-w-none transition-colors ${getFontClass()}`}
+        className={`w-full h-full bg-surface overflow-y-auto transition-colors`}
     >
-       {content.trim() ? (
-         <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              code: CodeBlock
-            }}
-         >
-            {content}
-         </ReactMarkdown>
-       ) : (
-         <div className="text-muted italic">Nothing to preview. Write something...</div>
-       )}
+       <div className={`mx-auto max-w-5xl p-8 prose prose-neutral dark:prose-invert prose-sm sm:prose-base max-w-none transition-colors ${getFontClass()}`}>
+         {content.trim() ? (
+           <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                code: CodeBlock
+              }}
+           >
+              {content}
+           </ReactMarkdown>
+         ) : (
+           <div className="text-muted italic">Nothing to preview. Write something...</div>
+         )}
+       </div>
     </div>
   );
 });

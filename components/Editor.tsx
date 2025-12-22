@@ -305,15 +305,20 @@ export const Editor: React.FC<EditorProps> = ({
                     if (onScroll) onScroll(e);
                 }}
                 className={`
-                    w-full h-full bg-background text-text resize-none focus:outline-none 
+                    block w-full h-full bg-background text-text resize-none focus:outline-none 
                     transition-all duration-300 leading-relaxed selection:bg-selection/30
                     ${getFontFamily()}
                     ${settings.wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'}
-                    ${isZenMode ? 'pt-16 max-w-3xl mx-auto px-8' : 'pt-24 pb-96 px-8 sm:px-12 md:px-24 max-w-5xl mx-auto'}
+                    ${isZenMode ? 'pt-16' : 'pt-24 pb-96'}
                 `}
                 style={{ 
                     fontSize: `${settings.fontSize}px`,
-                    lineHeight: '1.7' 
+                    lineHeight: '1.7',
+                    // Use CSS max() to calculate padding that centers the content up to a max-width, 
+                    // while keeping the element full width for correct scrollbar placement.
+                    // 64rem = max-w-5xl, 48rem = max-w-3xl
+                    paddingLeft: `max(2rem, calc(50% - ${isZenMode ? '24rem' : '32rem'}))`,
+                    paddingRight: `max(2rem, calc(50% - ${isZenMode ? '24rem' : '32rem'}))`
                 }}
                 value={content}
                 onChange={handleChange}
