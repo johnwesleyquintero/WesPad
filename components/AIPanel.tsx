@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Send, Bot, User, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2 } from 'lucide-react';
+import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2 } from 'lucide-react';
 import { Chat } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import * as geminiService from '../services/geminiService';
