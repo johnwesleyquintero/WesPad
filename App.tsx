@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Tab, CursorPosition, ViewMode } from './types';
+import { CursorPosition, ViewMode, Toast } from './types';
 import { TabBar } from './components/TabBar';
 import { Editor } from './components/Editor';
 import { StatusBar } from './components/StatusBar';
@@ -8,423 +8,108 @@ import { AIPanel } from './components/AIPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { FindReplaceBar } from './components/FindReplaceBar';
 import { CommandPalette } from './components/CommandPalette';
+import { ToastContainer } from './components/Toast';
 import { Sparkles, Minimize2, UploadCloud, Image as ImageIcon } from 'lucide-react';
 
-const STORAGE_KEY_TABS = 'wespad_tabs';
-const STORAGE_KEY_ACTIVE = 'wespad_active_tab';
-const STORAGE_KEY_API = 'wespad_api_key';
-const STORAGE_KEY_SETTINGS = 'wespad_settings';
-const STORAGE_KEY_THEME = 'wespad_theme';
-
-// Default initial state
-const DEFAULT_TAB: Tab = {
-  id: 'tab-1',
-  title: 'Welcome.md',
-  content: `# Welcome to WesPad
-
-A sovereign, local-first, AI-optional writing pad.
-
-## New Features
-- **Smart Typing**: Auto-lists and auto-closing brackets.
-- **Drag & Drop**: Drop files here to open them. Drop images to embed them!
-- **Zen Mode**: Press \`Alt+Z\` to focus.
-
-Start typing...
-`,
-  lastModified: Date.now(),
-  history: [],
-  historyIndex: 0
-};
-
-const DEFAULT_SETTINGS = {
-  fontSize: 16,
-  fontFamily: 'mono',
-  wordWrap: true,
-};
+// Hooks & Utils
+import { useTabs } from './hooks/useTabs';
+import { useTheme } from './hooks/useTheme';
+import { saveFile, openFilePicker, downloadFile } from './utils/fileSystem';
+import { STORAGE_KEYS, DEFAULT_SETTINGS } from './constants';
 
 const App: React.FC = () => {
-  // --- State ---
-  const [tabs, setTabs] = useState<Tab[]>([DEFAULT_TAB]);
-  const [activeTabId, setActiveTabId] = useState<string>(DEFAULT_TAB.id);
+  // --- Custom Hooks (State Management) ---
+  const { 
+    tabs, activeTabId, activeTab, setActiveTabId, 
+    createTab, closeTab, renameTab, updateContent, updateTabState,
+    undo, redo, canUndo, canRedo, isSaved, setIsSaved
+  } = useTabs();
+
+  const { theme, setTheme } = useTheme();
+
+  // --- Local State ---
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.EDIT);
   const [cursor, setCursor] = useState<CursorPosition>({ line: 1, column: 1 });
   const [selectionStats, setSelectionStats] = useState({ wordCount: 0, charCount: 0 });
-  const [isSaved, setIsSaved] = useState(true); 
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  
+  // UI Toggles
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFindOpen, setIsFindOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
+  
+  // Configuration
   const [apiKey, setApiKey] = useState('');
   const [editorSettings, setEditorSettings] = useState(DEFAULT_SETTINGS);
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  
+  // Drag & Drop
   const [isDragging, setIsDragging] = useState(false);
   const [dragType, setDragType] = useState<'file' | 'image' | null>(null);
 
   // --- Refs ---
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const typingTimeoutRef = useRef<number | null>(null);
 
   // --- Derived State ---
-  const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
-  
-  // Calculate Word Count & Reading Time
   const words = activeTab.content.trim().split(/\s+/).filter(word => word.length > 0);
   const wordCount = words.length;
-  // Avg reading speed ~225 wpm
   const readingTime = Math.ceil(wordCount / 225);
 
-  const canUndo = (activeTab.historyIndex || 0) > 0;
-  const canRedo = (activeTab.historyIndex || 0) < (activeTab.history?.length || 0) - 1;
-
-  // --- Persistence Effects ---
-  
-  // Load on mount
+  // --- Effects (Settings & API Key) ---
   useEffect(() => {
-    const savedTabs = localStorage.getItem(STORAGE_KEY_TABS);
-    const savedActive = localStorage.getItem(STORAGE_KEY_ACTIVE);
-    const savedKey = localStorage.getItem(STORAGE_KEY_API);
-    const savedSettings = localStorage.getItem(STORAGE_KEY_SETTINGS);
-    const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) as 'light' | 'dark';
-    
-    if (savedTabs) {
-      try {
-        const parsed = JSON.parse(savedTabs);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Hydrate tabs with empty history on load to prevent storage bloat
-          const hydratedTabs = parsed.map((t: any) => ({
-             ...t,
-             history: [t.content],
-             historyIndex: 0
-          }));
-          setTabs(hydratedTabs);
-        }
-      } catch (e) {
-        console.error("Failed to load tabs", e);
-      }
-    }
-    
-    if (savedActive) {
-      setActiveTabId(savedActive);
-    }
+    const savedKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
+    const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
 
-    if (savedKey) {
-      setApiKey(savedKey);
-    }
-
+    if (savedKey) setApiKey(savedKey);
     if (savedSettings) {
       try {
         setEditorSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
-      } catch (e) {
-        console.error("Failed to load settings", e);
-      }
-    }
-
-    if (savedTheme) {
-      setTheme(savedTheme);
+      } catch (e) { console.error("Failed to load settings", e); }
     }
   }, []);
 
-  // Theme Effect
   useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem(STORAGE_KEY_THEME, theme);
-
-    // Sync meta theme-color for PWA/Mobile interface
-    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor) {
-        metaThemeColor.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#ffffff');
-    }
-  }, [theme]);
-
-  // Save tabs on change (Exclude history from storage)
-  useEffect(() => {
-    // Strip history before saving to local storage
-    const tabsToSave = tabs.map(({ history, historyIndex, ...rest }) => rest);
-    localStorage.setItem(STORAGE_KEY_TABS, JSON.stringify(tabsToSave));
-    localStorage.setItem(STORAGE_KEY_ACTIVE, activeTabId);
-    
-    const timer = setTimeout(() => setIsSaved(true), 1000);
-    return () => clearTimeout(timer);
-  }, [tabs, activeTabId]);
-
-  // Save settings on change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(editorSettings));
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(editorSettings));
   }, [editorSettings]);
+
+  // --- Helpers ---
+  const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToasts(prev => [...prev, { id: Date.now().toString(), message, type }]);
+  };
+
+  const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
 
   const handleSaveApiKey = (key: string) => {
     setApiKey(key);
-    localStorage.setItem(STORAGE_KEY_API, key);
+    localStorage.setItem(STORAGE_KEYS.API_KEY, key);
+    addToast('API Key Saved', 'success');
   };
 
-  // --- Helpers ---
-  const createTab = (title: string, content: string) => {
-    const newTab: Tab = {
-        id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        title,
-        content,
-        lastModified: Date.now(),
-        isCustomTitle: true,
-        history: [content],
-        historyIndex: 0
-    };
-    setTabs(prev => [...prev, newTab]);
-    setActiveTabId(newTab.id);
-    setViewMode(ViewMode.EDIT);
-  };
-
-  const handleSaveEditorState = (id: string, state: { scrollTop: number; selection: { start: number; end: number } }) => {
-    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...state } : t));
-  };
-
-  // --- Handlers ---
-
-  const handleRenameTab = (id: string, newTitle: string) => {
-    setTabs(prev => prev.map(tab => {
-      if (tab.id === id) {
-        return { 
-          ...tab, 
-          title: newTitle.trim() || 'Untitled', 
-          isCustomTitle: true, // Mark as custom to prevent auto-overwrite
-          lastModified: Date.now() 
-        };
-      }
-      return tab;
-    }));
-  };
-
-  // Handles Undo logic
-  const handleUndo = () => {
-    if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = null;
-    }
-
-    setTabs(prev => prev.map(tab => {
-        if (tab.id === activeTabId) {
-            const index = tab.historyIndex ?? 0;
-            const history = tab.history || [tab.content];
-            if (index > 0) {
-                const newIndex = index - 1;
-                return {
-                    ...tab,
-                    content: history[newIndex],
-                    historyIndex: newIndex,
-                    lastModified: Date.now()
-                };
-            }
-        }
-        return tab;
-    }));
-    setIsSaved(false);
-  };
-
-  // Handles Redo logic
-  const handleRedo = () => {
-    if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = null;
-    }
-
-    setTabs(prev => prev.map(tab => {
-        if (tab.id === activeTabId) {
-            const index = tab.historyIndex ?? 0;
-            const history = tab.history || [tab.content];
-            if (index < history.length - 1) {
-                const newIndex = index + 1;
-                return {
-                    ...tab,
-                    content: history[newIndex],
-                    historyIndex: newIndex,
-                    lastModified: Date.now()
-                };
-            }
-        }
-        return tab;
-    }));
-    setIsSaved(false);
-  };
-
-  const handleUpdateContent = (newContent: string) => {
-    setIsSaved(false);
-
-    // 1. Clear any pending history commit
-    if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-    }
-
-    // 2. Immediate State Update (UI Responsiveness)
-    setTabs(prev => prev.map(tab => {
-      if (tab.id === activeTabId) {
-        let newTitle = tab.title;
-        
-        // Only auto-update title if user hasn't explicitly renamed it
-        if (!tab.isCustomTitle) {
-          const firstLine = newContent.split('\n')[0].trim();
-          if (firstLine.startsWith('# ')) {
-            newTitle = firstLine.substring(2).trim().substring(0, 20) || 'Untitled';
-          } else if (newContent.trim() === '') {
-              newTitle = 'Untitled';
-          }
-        }
-        
-        return { ...tab, content: newContent, title: newTitle, lastModified: Date.now() };
-      }
-      return tab;
-    }));
-
-    // 3. Debounced History Commit
-    typingTimeoutRef.current = window.setTimeout(() => {
-        setTabs(prev => prev.map(tab => {
-            if (tab.id === activeTabId) {
-                const history = tab.history || [tab.content];
-                const currentIndex = tab.historyIndex ?? 0;
-                const currentHistoryItem = history[currentIndex];
-
-                // Don't push if identical (avoids duplicates)
-                if (currentHistoryItem === newContent) return tab;
-
-                const newHistory = history.slice(0, currentIndex + 1);
-                newHistory.push(newContent);
-                
-                // Limit history size to 50
-                if (newHistory.length > 50) {
-                    newHistory.shift();
-                }
-
-                return {
-                    ...tab,
-                    history: newHistory,
-                    historyIndex: newHistory.length - 1
-                };
-            }
-            return tab;
-        }));
-    }, 700);
-  };
-
-  const handleNewTab = () => {
-    const newTab: Tab = {
-      id: `tab-${Date.now()}`,
-      title: 'Untitled',
-      content: '',
-      lastModified: Date.now(),
-      history: [''],
-      historyIndex: 0
-    };
-    setTabs(prev => [...prev, newTab]);
-    setActiveTabId(newTab.id);
-    setViewMode(ViewMode.EDIT); 
-  };
-
-  const handleCloseTab = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); 
-    if (tabs.length === 1) {
-      handleUpdateContent('');
-      // Reset history for the single remaining tab
-      setTabs(prev => prev.map(t => ({...t, history: [''], historyIndex: 0})));
-      return;
-    }
-
-    const newTabs = tabs.filter(t => t.id !== id);
-    setTabs(newTabs);
-    
-    if (id === activeTabId) {
-      setActiveTabId(newTabs[newTabs.length - 1].id);
-    }
-  };
-
+  // --- File Operations ---
+  
   const handleExport = () => {
-    // Basic download method (Fallback)
-    const blob = new Blob([activeTab.content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    
-    // Determine extension
-    let filename = activeTab.title;
-    // Basic heuristics for extension
-    if (!filename.includes('.')) {
-      filename += '.md';
-    }
-    
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadFile(activeTab.content, activeTab.title);
     setIsSaved(true);
+    addToast('File Exported', 'success');
   };
 
   const handleSaveAs = async () => {
-    // Check for Native File System Access API support
-    // @ts-ignore - TS might not know about showSaveFilePicker yet in this config
-    if (typeof window.showSaveFilePicker === 'function') {
-      try {
-        const options = {
-          suggestedName: activeTab.title.endsWith('.md') ? activeTab.title : `${activeTab.title}.md`,
-          types: [
-            {
-              description: 'Markdown File',
-              accept: { 'text/markdown': ['.md', '.txt'] },
-            },
-          ],
-        };
-        // @ts-ignore
-        const fileHandle = await window.showSaveFilePicker(options);
-        const writable = await fileHandle.createWritable();
-        await writable.write(activeTab.content);
-        await writable.close();
-        
-        setIsSaved(true);
-        if (fileHandle.name) {
-             handleRenameTab(activeTabId, fileHandle.name);
-        }
-
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          console.error('Save As failed:', err);
-          handleExport();
-        }
-      }
-    } else {
-      handleExport();
+    const result = await saveFile(activeTab.content, activeTab.title);
+    if (result.success) {
+      setIsSaved(true);
+      if (result.newFilename) renameTab(activeTabId, result.newFilename);
+      addToast('File Saved', 'success');
     }
   };
 
   const handleOpenFile = async () => {
-    // Check for Native File System Access API support
-    // @ts-ignore
-    if (typeof window.showOpenFilePicker === 'function') {
-        try {
-            // @ts-ignore
-            const [fileHandle] = await window.showOpenFilePicker({
-                types: [{
-                    description: 'Text Files',
-                    accept: {
-                        'text/*': ['.md', '.txt', '.json', '.js', '.ts', '.tsx', '.html', '.css']
-                    }
-                }],
-                multiple: false
-            });
-            const file = await fileHandle.getFile();
-            const text = await file.text();
-            createTab(file.name, text);
-            
-        } catch (err: any) {
-             if (err.name !== 'AbortError') {
-                console.error('Open file failed:', err);
-                fileInputRef.current?.click();
-             }
-        }
+    const result = await openFilePicker();
+    if (result) {
+        createTab(result.name, result.content);
     } else {
+        // Fallback or cancelled
         fileInputRef.current?.click();
     }
   };
@@ -432,128 +117,94 @@ const App: React.FC = () => {
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
-        const text = e.target?.result as string;
-        createTab(file.name, text);
+        createTab(file.name, e.target?.result as string);
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
-  // --- Drag & Drop Handlers ---
+  // --- Drag & Drop ---
   const handleDragOver = (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       if (!isDragging) setIsDragging(true);
-
-      // Detect if dragging an image
+      
+      let isImage = false;
       if (e.dataTransfer.items) {
         for (let i = 0; i < e.dataTransfer.items.length; i++) {
-          if (e.dataTransfer.items[i].type.startsWith('image/')) {
-            setDragType('image');
-            return;
-          }
+          if (e.dataTransfer.items[i].type.startsWith('image/')) isImage = true;
         }
       }
-      setDragType('file');
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-      setIsDragging(false);
-      setDragType(null);
+      setDragType(isImage ? 'image' : 'file');
   };
 
   const handleDrop = async (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
-      setDragType(null);
+      e.preventDefault(); e.stopPropagation();
+      setIsDragging(false); setDragType(null);
       
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
           const files = Array.from(e.dataTransfer.files);
-          
           for (const file of files) {
                if (file.type.startsWith('image/')) {
-                 // Handle Image Drop (Embed as Base64)
                  const reader = new FileReader();
                  reader.onload = (event) => {
                    const base64 = event.target?.result as string;
-                   // Insert into active editor
                    const markdownImage = `\n![${file.name}](${base64})\n`;
-                   
-                   // Find position: if editor ref exists, insert at selection, else append
                    if (editorRef.current) {
-                      const start = editorRef.current.selectionStart;
-                      const end = editorRef.current.selectionEnd;
-                      const value = editorRef.current.value;
-                      const newValue = value.substring(0, start) + markdownImage + value.substring(end);
-                      handleUpdateContent(newValue);
+                      const { selectionStart, selectionEnd, value } = editorRef.current;
+                      const newValue = value.substring(0, selectionStart) + markdownImage + value.substring(selectionEnd);
+                      updateContent(newValue);
                    } else {
-                      handleUpdateContent(activeTab.content + markdownImage);
+                      updateContent(activeTab.content + markdownImage);
                    }
+                   addToast('Image Embedded', 'success');
                  };
                  reader.readAsDataURL(file);
-
                } else {
-                  // Handle Text File Drop (New Tab)
                   try {
                       const text = await file.text();
                       createTab(file.name, text);
                   } catch (err) {
-                      console.error("Could not read file", file.name, err);
+                      addToast(`Failed to open ${file.name}`, 'error');
                   }
                }
           }
       }
   };
 
-
-  // --- Find & Replace Logic ---
-  
+  // --- Find & Replace ---
   const handleFindNext = (query: string, reverse: boolean = false) => {
       if (!editorRef.current || !query) return;
-      
       const textarea = editorRef.current;
       const text = textarea.value;
       const startPos = reverse ? textarea.selectionStart : textarea.selectionEnd;
-      let nextIndex = -1;
-
-      if (reverse) {
-          const textBefore = text.substring(0, startPos);
-          nextIndex = textBefore.lastIndexOf(query);
-          if (nextIndex === -1) {
-              nextIndex = text.lastIndexOf(query);
-          }
-      } else {
-          nextIndex = text.indexOf(query, startPos);
-          if (nextIndex === -1) {
-              nextIndex = text.indexOf(query);
-          }
+      let nextIndex = reverse 
+        ? text.substring(0, startPos).lastIndexOf(query) 
+        : text.indexOf(query, startPos);
+        
+      // Wrap around
+      if (nextIndex === -1) {
+          nextIndex = reverse ? text.lastIndexOf(query) : text.indexOf(query);
       }
 
       if (nextIndex !== -1) {
           textarea.focus();
           textarea.setSelectionRange(nextIndex, nextIndex + query.length);
+      } else {
+          addToast('No matches found', 'info');
       }
   };
 
   const handleReplace = (find: string, replace: string) => {
       if (!editorRef.current || !find) return;
-      
       const textarea = editorRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const currentSelection = textarea.value.substring(start, end);
+      const currentSelection = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
 
       if (currentSelection === find) {
-          const newVal = textarea.value.substring(0, start) + replace + textarea.value.substring(end);
-          handleUpdateContent(newVal);
-          
+          const start = textarea.selectionStart;
+          const newVal = textarea.value.substring(0, start) + replace + textarea.value.substring(textarea.selectionEnd);
+          updateContent(newVal);
           setTimeout(() => {
               if (editorRef.current) {
                 editorRef.current.setSelectionRange(start + replace.length, start + replace.length);
@@ -569,299 +220,128 @@ const App: React.FC = () => {
       if (!find) return;
       const escapedFind = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(escapedFind, 'g');
-      const newVal = activeTab.content.replace(regex, replace);
+      const count = (activeTab.content.match(regex) || []).length;
       
-      if (newVal !== activeTab.content) {
-        handleUpdateContent(newVal);
+      if (count > 0) {
+        updateContent(activeTab.content.replace(regex, replace));
+        addToast(`Replaced ${count} occurrences`, 'success');
+      } else {
+        addToast('No occurrences found', 'info');
       }
   };
 
   // --- Keyboard Shortcuts ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+Shift+P for Command Palette
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
-          e.preventDefault();
-          setIsCommandPaletteOpen(true);
-          return;
-      }
-
-      // Undo: Ctrl+Z
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-        return;
-      }
-
-      // Redo: Ctrl+Y or Ctrl+Shift+Z
-      if (
-          ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || 
-          ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
-      ) {
-        e.preventDefault();
-        handleRedo();
-        return;
-      }
-      
-      // Ctrl+N for New Tab
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-        e.preventDefault();
-        handleNewTab();
-      }
-      // Ctrl+O for Open
-      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
-        e.preventDefault();
-        handleOpenFile();
-      }
-      // Ctrl+S for Save As
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        handleSaveAs();
-      }
-      // Ctrl+K for AI
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-         e.preventDefault();
-         setIsAIPanelOpen(prev => !prev);
-         setIsFindOpen(false);
-         setIsCommandPaletteOpen(false);
-      }
-      // Ctrl+F for Find
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-          e.preventDefault();
-          setIsFindOpen(prev => !prev);
-          setIsAIPanelOpen(false);
-          setIsCommandPaletteOpen(false);
-      }
-      // Alt+Z for Zen Mode
-      if (e.altKey && e.key.toLowerCase() === 'z') {
-          e.preventDefault();
-          setIsZenMode(prev => !prev);
-      }
-      // Escape closes Zen Mode if active
-      if (e.key === 'Escape' && isZenMode) {
-          setIsZenMode(false);
-      }
+      const isMod = e.ctrlKey || e.metaKey;
+      if (isMod && e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); setIsCommandPaletteOpen(true); return; }
+      if (isMod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if ((isMod && e.key.toLowerCase() === 'y') || (isMod && e.shiftKey && e.key.toLowerCase() === 'z')) { e.preventDefault(); redo(); return; }
+      if (isMod && e.key === 'n') { e.preventDefault(); createTab('Untitled', ''); }
+      if (isMod && e.key === 'o') { e.preventDefault(); handleOpenFile(); }
+      if (isMod && e.key === 's') { e.preventDefault(); handleSaveAs(); }
+      if (isMod && e.key === 'k') { e.preventDefault(); setIsAIPanelOpen(prev => !prev); setIsFindOpen(false); setIsCommandPaletteOpen(false); }
+      if (isMod && e.key === 'f') { e.preventDefault(); setIsFindOpen(prev => !prev); setIsAIPanelOpen(false); setIsCommandPaletteOpen(false); }
+      if (e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); setIsZenMode(prev => !prev); addToast(isZenMode ? "Exited Zen Mode" : "Zen Mode Active", 'info'); }
+      if (e.key === 'Escape' && isZenMode) { setIsZenMode(false); addToast("Exited Zen Mode", 'info'); }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [tabs, activeTabId, isZenMode]);
 
-
-  // --- AI Interactions ---
-
+  // --- AI Helpers ---
   const getSelectedText = (): string => {
     if (editorRef.current) {
       const { selectionStart, selectionEnd, value } = editorRef.current;
-      if (selectionStart !== selectionEnd) {
-        return value.substring(selectionStart, selectionEnd);
-      }
+      if (selectionStart !== selectionEnd) return value.substring(selectionStart, selectionEnd);
     }
     return '';
-  };
-  
-  // Get tail context for AI when no selection is present
-  const getContextText = (): string => {
-      // Return last 2000 chars of active content
-      const content = activeTab.content;
-      if (content.length > 2000) {
-          return "..." + content.slice(content.length - 2000);
-      }
-      return content;
   };
 
   const replaceSelection = (text: string) => {
      if (editorRef.current) {
       const { selectionStart, selectionEnd, value } = editorRef.current;
       const newValue = value.substring(0, selectionStart) + text + value.substring(selectionEnd);
-      handleUpdateContent(newValue);
+      updateContent(newValue);
       setTimeout(() => {
           if(editorRef.current) {
               editorRef.current.selectionStart = editorRef.current.selectionEnd = selectionStart + text.length;
               editorRef.current.focus();
           }
       }, 0);
+      addToast('Text Replaced', 'success');
     }
   };
-
-  const appendText = (text: string) => {
-      const spacer = activeTab.content.endsWith('\n') ? '' : '\n\n';
-      const newValue = activeTab.content + spacer + text;
-      handleUpdateContent(newValue);
-  };
-
 
   return (
     <div 
       className="flex flex-col h-screen bg-background text-text font-sans overflow-hidden transition-colors duration-200 relative"
       onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
+      onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
     >
-      {/* Hidden File Input for Fallback Open */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleFileInputChange} 
-        className="hidden" 
-        accept=".md,.txt,.json,.js,.ts,.tsx,.html,.css"
-      />
+      <ToastContainer toasts={toasts} onDismiss={removeToast} />
+      <input type="file" ref={fileInputRef} onChange={handleFileInputChange} className="hidden" accept=".md,.txt,.json,.js,.ts,.tsx,.html,.css"/>
       
-      {/* Drag Overlay */}
       {isDragging && (
           <div className="absolute inset-0 z-[100] bg-background/80 backdrop-blur-sm border-4 border-dashed border-text/20 flex flex-col items-center justify-center pointer-events-none transition-opacity">
-              {dragType === 'image' ? (
-                 <ImageIcon size={64} className="text-text mb-4 opacity-50" />
-              ) : (
-                 <UploadCloud size={64} className="text-text mb-4 opacity-50" />
-              )}
-              <div className="text-2xl font-bold text-text">
-                  {dragType === 'image' ? "Drop image to embed" : "Drop file to open"}
-              </div>
-              <div className="text-muted mt-2">
-                  {dragType === 'image' ? "Will be inserted as Markdown" : "Markdown, Text, Code"}
-              </div>
+              {dragType === 'image' ? <ImageIcon size={64} className="text-text mb-4 opacity-50" /> : <UploadCloud size={64} className="text-text mb-4 opacity-50" />}
+              <div className="text-2xl font-bold text-text">{dragType === 'image' ? "Drop image to embed" : "Drop file to open"}</div>
           </div>
       )}
 
-      {/* 1. Header Area: Tab Bar (Hidden in Zen Mode) */}
       {!isZenMode && (
         <div className="flex-none print:hidden">
           <TabBar 
-            tabs={tabs}
-            activeTabId={activeTabId}
-            onTabClick={setActiveTabId}
-            onTabClose={handleCloseTab}
-            onNewTab={handleNewTab}
-            onRenameTab={handleRenameTab}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onExport={handleExport}
-            onSave={handleSaveAs}
-            onOpen={handleOpenFile}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            canUndo={canUndo}
-            canRedo={canRedo}
+            tabs={tabs} activeTabId={activeTabId} onTabClick={setActiveTabId} onTabClose={(id, e) => closeTab(id)} onNewTab={() => createTab('Untitled', '')}
+            onRenameTab={renameTab} onOpenSettings={() => setIsSettingsOpen(true)} onExport={handleExport} onSave={handleSaveAs} onOpen={handleOpenFile}
+            onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo}
           />
         </div>
       )}
 
-      {/* 2. Main Content Area */}
       <div className="flex-1 flex overflow-hidden relative">
-        
         <SettingsModal 
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-          apiKey={apiKey}
-          onSaveApiKey={handleSaveApiKey}
-          editorSettings={editorSettings}
-          onSaveEditorSettings={setEditorSettings}
-          theme={theme}
-          onSetTheme={setTheme}
+          isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} apiKey={apiKey} onSaveApiKey={handleSaveApiKey}
+          editorSettings={editorSettings} onSaveEditorSettings={setEditorSettings} theme={theme} onSetTheme={setTheme}
         />
-
         <CommandPalette 
-           isOpen={isCommandPaletteOpen}
-           onClose={() => setIsCommandPaletteOpen(false)}
-           actions={{
-               onNewTab: handleNewTab,
-               onOpenFile: handleOpenFile,
-               onSaveAs: handleSaveAs,
-               onExport: handleExport,
-               onSettings: () => setIsSettingsOpen(true),
-               onAI: () => setIsAIPanelOpen(true),
-               onFind: () => setIsFindOpen(true),
-               onToggleZen: () => setIsZenMode(prev => !prev),
-               setViewMode: setViewMode
-           }}
+           isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)}
+           actions={{ onNewTab: () => createTab('Untitled', ''), onOpenFile: handleOpenFile, onSaveAs: handleSaveAs, onExport: handleExport, onSettings: () => setIsSettingsOpen(true), onAI: () => setIsAIPanelOpen(true), onFind: () => setIsFindOpen(true), onToggleZen: () => setIsZenMode(p => !p), setViewMode }}
         />
+        <FindReplaceBar isOpen={isFindOpen} onClose={() => setIsFindOpen(false)} onFindNext={(q) => handleFindNext(q, false)} onFindPrev={(q) => handleFindNext(q, true)} onReplace={handleReplace} onReplaceAll={handleReplaceAll} />
+        <AIPanel isOpen={isAIPanelOpen} onClose={() => setIsAIPanelOpen(false)} selectedText={getSelectedText()} contextText={activeTab.content.slice(-2000)} onReplaceText={replaceSelection} onAppendText={(t) => updateContent(activeTab.content + (activeTab.content.endsWith('\n')?'':'\n\n') + t)} apiKey={apiKey} onOpenSettings={() => setIsSettingsOpen(true)} />
 
-        {/* Find & Replace Bar */}
-        <FindReplaceBar 
-            isOpen={isFindOpen}
-            onClose={() => setIsFindOpen(false)}
-            onFindNext={(q) => handleFindNext(q, false)}
-            onFindPrev={(q) => handleFindNext(q, true)}
-            onReplace={handleReplace}
-            onReplaceAll={handleReplaceAll}
-        />
-
-        {/* AI Floating Panel */}
-        <AIPanel 
-            isOpen={isAIPanelOpen} 
-            onClose={() => setIsAIPanelOpen(false)}
-            selectedText={getSelectedText()}
-            contextText={getContextText()}
-            onReplaceText={replaceSelection}
-            onAppendText={appendText}
-            apiKey={apiKey}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-        />
-
-        {/* AI Trigger Button (Floating) - Only visible in EDIT mode (and NOT Zen Mode) */}
         {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && !isZenMode && (
-            <button 
-                onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
-                className="absolute top-4 right-6 z-40 bg-surface/90 hover:bg-surface text-muted hover:text-text border border-border p-2 rounded-full shadow-lg backdrop-blur-sm transition-all print:hidden"
-                title="Open AI Tools (Ctrl+K)"
-            >
+            <button onClick={() => setIsAIPanelOpen(!isAIPanelOpen)} className="absolute top-4 right-6 z-40 bg-surface/90 hover:bg-surface text-muted hover:text-text border border-border p-2 rounded-full shadow-lg backdrop-blur-sm transition-all print:hidden">
                 <Sparkles size={18} />
             </button>
         )}
-
-        {/* Zen Mode Exit Button (Only visible in Zen Mode) */}
         {isZenMode && (
-           <button 
-              onClick={() => setIsZenMode(false)}
-              className="absolute top-4 right-6 z-40 bg-surface/50 hover:bg-surface text-muted hover:text-text border border-border p-2 rounded-full shadow-lg backdrop-blur-sm transition-all animate-in fade-in print:hidden"
-              title="Exit Zen Mode (Esc)"
-           >
+           <button onClick={() => { setIsZenMode(false); addToast("Exited Zen Mode", 'info'); }} className="absolute top-4 right-6 z-40 bg-surface/50 hover:bg-surface text-muted hover:text-text border border-border p-2 rounded-full shadow-lg backdrop-blur-sm transition-all animate-in fade-in print:hidden">
               <Minimize2 size={18} />
            </button>
         )}
 
-        {/* Editor Pane */}
         {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && (
           <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2 border-r border-border' : 'w-full'} h-full bg-background`}>
             <Editor 
-              key={activeTabId}
-              content={activeTab.content}
-              onChange={handleUpdateContent}
-              onCursorChange={setCursor}
-              onSelectionStatsChange={setSelectionStats}
-              editorRef={editorRef}
-              settings={editorSettings}
-              initialScrollTop={activeTab.scrollTop}
-              initialSelection={activeTab.selection}
-              onSaveState={(state) => handleSaveEditorState(activeTabId, state)}
+              key={activeTabId} content={activeTab.content} onChange={updateContent} onCursorChange={setCursor} onSelectionStatsChange={setSelectionStats}
+              editorRef={editorRef} settings={editorSettings} initialScrollTop={activeTab.scrollTop} initialSelection={activeTab.selection}
+              onSaveState={(state) => updateTabState(activeTabId, state)} isZenMode={isZenMode}
             />
           </div>
         )}
-
-        {/* Preview Pane */}
         {(viewMode === ViewMode.PREVIEW || viewMode === ViewMode.SPLIT) && (
           <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2' : 'w-full'} h-full bg-surface`}>
-            <MarkdownPreview 
-                content={activeTab.content} 
-                fontFamily={editorSettings.fontFamily}
-            />
+            <MarkdownPreview content={activeTab.content} fontFamily={editorSettings.fontFamily} />
           </div>
         )}
       </div>
 
-      {/* 3. Footer: Status Bar (Hidden in Zen Mode) */}
       {!isZenMode && (
         <div className="flex-none print:hidden">
-          <StatusBar 
-            cursor={cursor}
-            characterCount={activeTab.content.length}
-            wordCount={wordCount}
-            selectionStats={selectionStats}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            isSaved={isSaved}
-            readingTime={readingTime}
-          />
+          <StatusBar cursor={cursor} characterCount={activeTab.content.length} wordCount={wordCount} selectionStats={selectionStats} viewMode={viewMode} setViewMode={setViewMode} isSaved={isSaved} readingTime={readingTime} />
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@
   --muted: #737373;        /* neutral-500 */
   --border: #e5e5e5;       /* neutral-200 */
   --accent: #000000;       /* black */
+  --selection: #fde047;    /* yellow-300 */
 }
 
 .dark {
@@ -20,6 +21,7 @@
   --muted: #737373;        /* neutral-500 */
   --border: #262626;       /* neutral-800 */
   --accent: #ffffff;       /* white */
+  --selection: #265973;    /* muted blue */
 }
 
 html, body, #root {
@@ -28,6 +30,14 @@ html, body, #root {
   overflow: hidden;
   background-color: var(--background);
   color: var(--text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom Text Selection */
+::selection {
+  background-color: var(--selection);
+  color: var(--text);
+  -webkit-text-fill-color: var(--text); /* Fix for some webkit browsers */
 }
 
 textarea:focus {
@@ -47,7 +57,7 @@ textarea:focus {
 ::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 5px;
-    border: 2px solid var(--background); /* Creates padding effect */
+    border: 3px solid var(--background); /* Creates padding effect */
 }
 
 ::-webkit-scrollbar-thumb:hover {

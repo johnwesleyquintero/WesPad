@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect } from 'react';
 import { CursorPosition } from '../types';
+import * as TextUtils from '../utils/textManipulation';
 
 interface EditorProps {
   content: string;
@@ -15,15 +16,8 @@ interface EditorProps {
   initialScrollTop?: number;
   initialSelection?: { start: number; end: number };
   onSaveState: (state: { scrollTop: number; selection: { start: number; end: number } }) => void;
+  isZenMode: boolean;
 }
-
-const AUTO_CLOSE_PAIRS: Record<string, string> = {
-  '(': ')',
-  '[': ']',
-  '{': '}',
-  '"': '"',
-  '`': '`',
-};
 
 export const Editor: React.FC<EditorProps> = ({ 
   content, 
@@ -34,7 +28,8 @@ export const Editor: React.FC<EditorProps> = ({
   settings,
   initialScrollTop,
   initialSelection,
-  onSaveState
+  onSaveState,
+  isZenMode
 }) => {
   
   // Restore state on mount (which happens on tab switch due to key prop)
@@ -92,210 +87,89 @@ export const Editor: React.FC<EditorProps> = ({
     handleSelect();
   };
 
-  const handleFormat = (wrapper: string) => {
-    if (!editorRef.current) return;
-    
-    const start = editorRef.current.selectionStart;
-    const end = editorRef.current.selectionEnd;
-    const value = editorRef.current.value;
-    
-    const selectedText = value.substring(start, end);
-    const before = value.substring(0, start);
-    const after = value.substring(end);
-    
-    // Check if selection itself is wrapped
-    if (selectedText.startsWith(wrapper) && selectedText.endsWith(wrapper) && selectedText.length >= 2 * wrapper.length) {
-        const newText = selectedText.substring(wrapper.length, selectedText.length - wrapper.length);
-        const newValue = before + newText + after;
-        onChange(newValue);
-        setTimeout(() => {
-            if (editorRef.current) {
-                editorRef.current.focus();
-                editorRef.current.setSelectionRange(start, start + newText.length);
-            }
-        }, 0);
-        return;
-    }
-
-    // Check if surrounding text is wrapped
-    if (before.endsWith(wrapper) && after.startsWith(wrapper)) {
-        const newBefore = before.substring(0, before.length - wrapper.length);
-        const newAfter = after.substring(wrapper.length);
-        const newValue = newBefore + selectedText + newAfter;
-        onChange(newValue);
-        setTimeout(() => {
-            if (editorRef.current) {
-                editorRef.current.focus();
-                editorRef.current.setSelectionRange(start - wrapper.length, end - wrapper.length);
-            }
-        }, 0);
-        return;
-    }
-
-    // Apply wrapper
-    const newValue = before + wrapper + selectedText + wrapper + after;
-    onChange(newValue);
+  const applyMutation = (result: { newValue: string; newSelectionStart: number; newSelectionEnd: number }) => {
+    onChange(result.newValue);
     setTimeout(() => {
         if (editorRef.current) {
             editorRef.current.focus();
-            editorRef.current.setSelectionRange(start + wrapper.length, end + wrapper.length);
+            editorRef.current.setSelectionRange(result.newSelectionStart, result.newSelectionEnd);
+            handleSelect();
         }
     }, 0);
   };
 
+  const handleFormat = (wrapper: string) => {
+    if (!editorRef.current) return;
+    
+    const state = {
+        value: editorRef.current.value,
+        selectionStart: editorRef.current.selectionStart,
+        selectionEnd: editorRef.current.selectionEnd
+    };
+
+    const result = TextUtils.handleFormatWrapper(state, wrapper);
+    applyMutation(result);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const isMod = e.ctrlKey || e.metaKey;
+    if (!editorRef.current) return;
+
+    const state = {
+        value: editorRef.current.value,
+        selectionStart: editorRef.current.selectionStart,
+        selectionEnd: editorRef.current.selectionEnd
+    };
 
     // 1. Tab Indentation
     if (e.key === 'Tab') {
+      const result = TextUtils.handleTabIndentation(state);
       e.preventDefault();
-      if (!editorRef.current) return;
-
-      const start = editorRef.current.selectionStart;
-      const end = editorRef.current.selectionEnd;
-      const value = editorRef.current.value;
-
-      const newValue = value.substring(0, start) + '  ' + value.substring(end);
-      onChange(newValue);
-      
-      setTimeout(() => {
-        if(editorRef.current) {
-            editorRef.current.selectionStart = editorRef.current.selectionEnd = start + 2;
-        }
-      }, 0);
+      applyMutation(result);
       return;
     }
 
-    // 2. Skip over closing pair if typed (Overtype)
-    if (!isMod && Object.values(AUTO_CLOSE_PAIRS).includes(e.key)) {
-        if (!editorRef.current) return;
-        const start = editorRef.current.selectionStart;
-        const value = editorRef.current.value;
-        // If the character to the right is the one we are typing, just move cursor
-        if (value[start] === e.key) {
-             e.preventDefault();
-             editorRef.current.selectionStart = start + 1;
-             editorRef.current.selectionEnd = start + 1;
-             handleSelect();
-             return;
-        }
-    }
-
-    // 3. Auto-Close Pairs
-    if (!isMod && AUTO_CLOSE_PAIRS[e.key]) {
-        e.preventDefault();
-        if (!editorRef.current) return;
-        
-        const start = editorRef.current.selectionStart;
-        const end = editorRef.current.selectionEnd;
-        const value = editorRef.current.value;
-        const char = e.key;
-        const closeChar = AUTO_CLOSE_PAIRS[char];
-
-        // Wrap selection if text is selected
-        if (start !== end) {
-            const selected = value.substring(start, end);
-            const newValue = value.substring(0, start) + char + selected + closeChar + value.substring(end);
-            onChange(newValue);
-            setTimeout(() => {
-                if (editorRef.current) {
-                   // Select the text inside the pair
-                   editorRef.current.selectionStart = start + 1;
-                   editorRef.current.selectionEnd = end + 1; 
-                   handleSelect();
-                }
-            }, 0);
-        } else {
-            // Insert pair and place cursor in middle
-            const newValue = value.substring(0, start) + char + closeChar + value.substring(end);
-            onChange(newValue);
-            setTimeout(() => {
-                if (editorRef.current) {
-                    editorRef.current.selectionStart = editorRef.current.selectionEnd = start + 1;
-                    handleSelect();
-                }
-            }, 0);
-        }
-        return;
-    }
-
-    // 4. Smart Lists (Enter)
-    if (e.key === 'Enter') {
-        if (!editorRef.current) return;
-        const start = editorRef.current.selectionStart;
-        const value = editorRef.current.value;
-        
-        // Find the current line text
-        const lastNewLinePos = value.lastIndexOf('\n', start - 1);
-        const currentLineStart = lastNewLinePos + 1;
-        const currentLine = value.substring(currentLineStart, start);
-        
-        // Regex for unordered (- or *) or ordered (1.) lists
-        // Matches "  - " or "1. " at start of line
-        const match = currentLine.match(/^(\s*)([-*]|\d+\.)(\s+)/);
-        
-        if (match) {
-            // Check if user is breaking out of list (empty list item)
-            // match[0] is the whole prefix "  - "
-            // If the line consists ONLY of the bullet/number and whitespace, clear it
-            const lineContent = currentLine.substring(match[0].length).trim();
-            
-            if (lineContent === '') { 
-                 e.preventDefault();
-                 // Remove the current line content (the bullet)
-                 const newValue = value.substring(0, currentLineStart) + '\n' + value.substring(start);
-                 onChange(newValue);
-                 // Cursor will be naturally at correct pos (start of new empty line)
-                 // but we need to account for the deletion of the bullet chars
-                 return;
-            }
-
+    // 2. Overtype closing pair
+    if (!isMod) {
+        const overtypeResult = TextUtils.handleOvertype(state, e.key);
+        if (overtypeResult) {
             e.preventDefault();
-            let nextBullet = match[2];
-            // Increment number if ordered list
-            if (match[2].match(/\d+\./)) {
-                const num = parseInt(match[2]);
-                nextBullet = `${num + 1}.`;
+            // Just move cursor, no value change
+            if (editorRef.current) {
+                editorRef.current.setSelectionRange(overtypeResult.newSelectionStart, overtypeResult.newSelectionEnd);
+                handleSelect();
             }
-            
-            const insertion = `\n${match[1]}${nextBullet}${match[3]}`;
-            const newValue = value.substring(0, start) + insertion + value.substring(editorRef.current.selectionEnd);
-            onChange(newValue);
-            
-            setTimeout(() => {
-                if(editorRef.current) {
-                    editorRef.current.selectionStart = editorRef.current.selectionEnd = start + insertion.length;
-                    handleSelect(); // update cursor stats
-                }
-            }, 0);
             return;
         }
     }
 
-    // 5. Smart Backspace (Optional: Delete pair if empty)
+    // 3. Auto-Close Pairs
+    if (!isMod) {
+        const autoCloseResult = TextUtils.handleAutoClose(state, e.key);
+        if (autoCloseResult) {
+            e.preventDefault();
+            applyMutation(autoCloseResult);
+            return;
+        }
+    }
+
+    // 4. Smart Lists (Enter)
+    if (e.key === 'Enter') {
+        const listResult = TextUtils.handleSmartList(state);
+        if (listResult) {
+            e.preventDefault();
+            applyMutation(listResult);
+            return;
+        }
+    }
+
+    // 5. Smart Backspace
     if (e.key === 'Backspace') {
-         if (!editorRef.current) return;
-         const start = editorRef.current.selectionStart;
-         const end = editorRef.current.selectionEnd;
-         const value = editorRef.current.value;
-         
-         if (start === end && start > 0) {
-             const charToDelete = value[start - 1];
-             const nextChar = value[start];
-             
-             // If we are deleting an opening char, and the next char is the matching closing char
-             if (AUTO_CLOSE_PAIRS[charToDelete] === nextChar) {
-                 e.preventDefault();
-                 const newValue = value.substring(0, start - 1) + value.substring(start + 1);
-                 onChange(newValue);
-                 setTimeout(() => {
-                     if (editorRef.current) {
-                         editorRef.current.selectionStart = editorRef.current.selectionEnd = start - 1;
-                         handleSelect();
-                     }
-                 }, 0);
-                 return;
-             }
+         const bsResult = TextUtils.handleSmartBackspace(state);
+         if (bsResult) {
+             e.preventDefault();
+             applyMutation(bsResult);
+             return;
          }
     }
 
@@ -321,22 +195,25 @@ export const Editor: React.FC<EditorProps> = ({
   };
 
   return (
-    <textarea
-      ref={editorRef}
-      className={`
-        w-full h-full bg-background text-text p-4 pb-96 resize-none focus:outline-none selection:bg-muted/30
-        transition-colors duration-200
-        ${getFontFamily()}
-        ${settings.wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'}
-      `}
-      style={{ fontSize: `${settings.fontSize}px` }}
-      value={content}
-      onChange={handleChange}
-      onSelect={handleSelect}
-      onKeyDown={handleKeyDown}
-      placeholder="Start writing..."
-      spellCheck={false}
-      autoFocus
-    />
+    <div className={`w-full h-full flex justify-center bg-background overflow-hidden ${isZenMode ? 'items-start pt-10' : ''}`}>
+        <textarea
+        ref={editorRef}
+        className={`
+            h-full bg-background text-text p-4 pb-96 resize-none focus:outline-none 
+            transition-all duration-300
+            ${getFontFamily()}
+            ${settings.wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'}
+            ${isZenMode ? 'max-w-3xl w-full border-none' : 'w-full'}
+        `}
+        style={{ fontSize: `${settings.fontSize}px` }}
+        value={content}
+        onChange={handleChange}
+        onSelect={handleSelect}
+        onKeyDown={handleKeyDown}
+        placeholder="Start writing..."
+        spellCheck={false}
+        autoFocus
+        />
+    </div>
   );
 };

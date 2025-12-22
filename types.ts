@@ -28,3 +28,9 @@ export interface AIState {
   isOpen: boolean;
   activeMode: 'rewrite' | 'summarize' | 'generate' | null;
 }
+
+export interface Toast {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
