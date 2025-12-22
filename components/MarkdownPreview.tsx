@@ -12,6 +12,16 @@ interface MarkdownPreviewProps {
   isZenMode: boolean;
 }
 
+// Stable style object
+const CODE_BLOCK_STYLE = { 
+  background: '#1e1e1e', 
+  margin: 0, 
+  padding: '1.5rem',
+  fontSize: '0.85em',
+  border: 'none',
+  borderRadius: 0
+};
+
 const CodeBlock = memo(({ children, className, ...rest }: any) => {
   const [isCopied, setIsCopied] = useState(false);
   const match = /language-(\w+)/.exec(className || '');
@@ -31,16 +41,6 @@ const CodeBlock = memo(({ children, className, ...rest }: any) => {
     );
   }
 
-  // Stable style object
-  const customStyle = { 
-    background: '#1e1e1e', 
-    margin: 0, 
-    padding: '1.5rem',
-    fontSize: '0.85em',
-    border: 'none',
-    borderRadius: 0
-  };
-
   return (
     <div className="relative group my-4 rounded-lg overflow-hidden border border-border">
       <div className="flex items-center justify-between bg-[#1e1e1e] px-4 py-2 border-b border-[#333]">
@@ -59,7 +59,7 @@ const CodeBlock = memo(({ children, className, ...rest }: any) => {
         children={codeString}
         language={match[1]}
         style={vscDarkPlus}
-        customStyle={customStyle}
+        customStyle={CODE_BLOCK_STYLE}
       />
     </div>
   );

@@ -58,7 +58,10 @@ export const rewriteText = async (text: string, apiKey?: string): Promise<string
     const ai = getClient(apiKey);
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
-      contents: `Rewrite the following text to be more clear, concise, and professional. maintain the original meaning. Only return the rewritten text, no explanations.\n\nText: ${text}`,
+      contents: `Text to rewrite:\n"${text}"`,
+      config: {
+        systemInstruction: "Rewrite the user's text to be more clear, concise, and professional. Maintain the original meaning. Only return the rewritten text, no explanations."
+      }
     });
     return response.text || "";
   } catch (error) {
@@ -77,7 +80,10 @@ export const summarizeText = async (text: string, apiKey?: string): Promise<stri
     const ai = getClient(apiKey);
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
-      contents: `Summarize the following text into a concise paragraph. Only return the summary.\n\nText: ${text}`,
+      contents: `Text to summarize:\n"${text}"`,
+      config: {
+        systemInstruction: "Summarize the user's text into a concise paragraph. Only return the summary."
+      }
     });
     return response.text || "";
   } catch (error) {
