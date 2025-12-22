@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
-  <!-- Slate 950 Background with rounded corners -->
-  <rect width="100" height="100" rx="24" fill="#0f172a"/>
+  <!-- Neutral 950 Background -->
+  <rect width="100" height="100" rx="24" fill="#0a0a0a"/>
   
-  <!-- Sky 400 'W' Monogram / Pulse Line -->
-  <path d="M22 35 L38 72 L50 42 L62 72 L78 35" stroke="#38bdf8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- White 'W' Monogram / Pulse Line -->
+  <path d="M22 35 L38 72 L50 42 L62 72 L78 35" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

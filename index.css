@@ -6,8 +6,8 @@ html, body, #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background-color: #0f172a;
-  color: #f8fafc;
+  background-color: #0a0a0a; /* neutral-950 */
+  color: #e5e5e5; /* neutral-200 */
 }
 
 textarea:focus {

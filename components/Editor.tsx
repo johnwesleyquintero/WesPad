@@ -70,7 +70,7 @@ export const Editor: React.FC<EditorProps> = ({
     <textarea
       ref={editorRef}
       className={`
-        w-full h-full bg-slate-950 text-slate-200 p-4 resize-none focus:outline-none selection:bg-slate-700
+        w-full h-full bg-neutral-950 text-neutral-300 p-4 resize-none focus:outline-none selection:bg-neutral-700
         ${getFontFamily()}
         ${settings.wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'}
       `}

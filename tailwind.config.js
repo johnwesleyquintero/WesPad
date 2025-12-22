@@ -8,12 +8,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0f172a', // slate-950
-        surface: '#1e293b',    // slate-800
-        text: '#f8fafc',       // slate-50
-        muted: '#94a3b8',      // slate-400
-        border: '#334155',     // slate-700
-        accent: '#38bdf8',     // sky-400
+        background: '#0a0a0a', // neutral-950
+        surface: '#171717',    // neutral-900
+        text: '#e5e5e5',       // neutral-200
+        muted: '#737373',      // neutral-500
+        border: '#262626',     // neutral-800
+        accent: '#ffffff',     // white
       },
       fontFamily: {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
@@ -21,5 +21,7 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 }

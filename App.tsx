@@ -193,9 +193,6 @@ const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         setIsSaved(true);
-        // Optionally trigger export here? For now, stick to roadmap "Visual trigger"
-        // But users might expect it to save to disk. 
-        // Let's stick to simple "Saved" indicator update as per Phase 1/2 spec.
       }
       // Ctrl+K for AI
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -243,7 +240,7 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-neutral-950 text-neutral-200 font-sans overflow-hidden">
       {/* 1. Header Area: Tab Bar */}
       <div className="flex-none">
         <TabBar 
@@ -284,7 +281,7 @@ const App: React.FC = () => {
         {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && (
             <button 
                 onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
-                className="absolute top-4 right-6 z-40 bg-slate-800/80 hover:bg-sky-600 text-slate-300 hover:text-white p-2 rounded-full shadow-lg backdrop-blur-sm transition-all"
+                className="absolute top-4 right-6 z-40 bg-neutral-900/90 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-700 p-2 rounded-full shadow-lg backdrop-blur-sm transition-all"
                 title="Open AI Tools (Ctrl+K)"
             >
                 <Sparkles size={18} />
@@ -293,7 +290,7 @@ const App: React.FC = () => {
 
         {/* Editor Pane */}
         {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && (
-          <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2 border-r border-slate-800' : 'w-full'} h-full bg-slate-950`}>
+          <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2 border-r border-neutral-800' : 'w-full'} h-full bg-neutral-950`}>
             <Editor 
               content={activeTab.content}
               onChange={handleUpdateContent}
@@ -306,7 +303,7 @@ const App: React.FC = () => {
 
         {/* Preview Pane */}
         {(viewMode === ViewMode.PREVIEW || viewMode === ViewMode.SPLIT) && (
-          <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2' : 'w-full'} h-full bg-slate-900`}>
+          <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2' : 'w-full'} h-full bg-neutral-900`}>
             <MarkdownPreview content={activeTab.content} />
           </div>
         )}
