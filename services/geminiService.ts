@@ -3,11 +3,32 @@ import { GoogleGenAI, Chat } from "@google/genai";
 const MODEL_NAME = 'gemini-3-flash-preview';
 
 /**
+ * Safely retrieves the API key from the environment if available.
+ */
+const getEnvApiKey = (): string | undefined => {
+  try {
+    // Check if process is defined (node/shim)
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.API_KEY;
+    }
+    // Check if import.meta.env is defined (Vite)
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      return import.meta.env.VITE_API_KEY || import.meta.env.API_KEY;
+    }
+  } catch (e) {
+    // Ignore errors in strict environments
+  }
+  return undefined;
+};
+
+/**
  * Creates a new Gemini client instance.
- * Prioritizes the user-provided key, falling back to process.env if available (dev mode).
+ * Prioritizes the user-provided key, falling back to environment variables.
  */
 const getClient = (apiKey?: string) => {
-  const key = apiKey || process.env.API_KEY;
+  const key = apiKey || getEnvApiKey();
   if (!key) {
     throw new Error("Missing API Key. Please configure it in Settings.");
   }
