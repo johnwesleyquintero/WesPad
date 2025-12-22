@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Tab } from '../types';
-import { Plus, X, FileText, Settings, Download } from 'lucide-react';
+import { Plus, X, FileText, Settings, Download, Save } from 'lucide-react';
 
 interface TabBarProps {
   tabs: Tab[];
@@ -11,6 +11,7 @@ interface TabBarProps {
   onRenameTab: (id: string, newTitle: string) => void;
   onOpenSettings: () => void;
   onExport: () => void;
+  onSave: () => void;
 }
 
 export const TabBar: React.FC<TabBarProps> = ({ 
@@ -21,7 +22,8 @@ export const TabBar: React.FC<TabBarProps> = ({
   onNewTab,
   onRenameTab,
   onOpenSettings,
-  onExport
+  onExport,
+  onSave
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -40,7 +42,7 @@ export const TabBar: React.FC<TabBarProps> = ({
     setEditValue(tab.title);
   };
 
-  const handleSave = () => {
+  const handleSaveTitle = () => {
     if (editingId) {
       onRenameTab(editingId, editValue);
       setEditingId(null);
@@ -49,7 +51,7 @@ export const TabBar: React.FC<TabBarProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSave();
+      handleSaveTitle();
     } else if (e.key === 'Escape') {
       setEditingId(null);
     }
@@ -77,7 +79,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                 type="text"
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleSave}
+                onBlur={handleSaveTitle}
                 onKeyDown={handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
                 className="bg-neutral-800 text-white text-xs font-medium focus:outline-none w-full px-1 border border-neutral-600 rounded"
@@ -115,6 +117,15 @@ export const TabBar: React.FC<TabBarProps> = ({
       {/* Spacer to fill rest of bar */}
       <div className="flex-1 bg-neutral-950 h-full"></div>
       
+      {/* Save Button */}
+      <button 
+        onClick={onSave}
+        className="h-full px-3 text-neutral-500 hover:text-white hover:bg-neutral-900 transition-colors flex items-center justify-center border-l border-neutral-800"
+        title="Save As (Ctrl+S)"
+      >
+        <Save size={16} />
+      </button>
+
       {/* Export Button */}
       <button 
         onClick={onExport}

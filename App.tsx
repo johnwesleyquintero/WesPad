@@ -180,6 +180,7 @@ const App: React.FC = () => {
   };
 
   const handleExport = () => {
+    // Basic download method (Fallback)
     const blob = new Blob([activeTab.content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -197,6 +198,49 @@ const App: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    setIsSaved(true);
+  };
+
+  const handleSaveAs = async () => {
+    // Check for Native File System Access API support
+    // @ts-ignore - TS might not know about showSaveFilePicker yet in this config
+    if (typeof window.showSaveFilePicker === 'function') {
+      try {
+        const options = {
+          suggestedName: activeTab.title.endsWith('.md') ? activeTab.title : `${activeTab.title}.md`,
+          types: [
+            {
+              description: 'Markdown File',
+              accept: { 'text/markdown': ['.md', '.txt'] },
+            },
+          ],
+        };
+        // @ts-ignore
+        const fileHandle = await window.showSaveFilePicker(options);
+        const writable = await fileHandle.createWritable();
+        await writable.write(activeTab.content);
+        await writable.close();
+        
+        // Optional: Update title if user changed it in the dialog? 
+        // For now, we just mark as saved locally.
+        setIsSaved(true);
+        
+        // If the file handle gave us a name, we could update the tab title
+        if (fileHandle.name) {
+             handleRenameTab(activeTabId, fileHandle.name);
+        }
+
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error('Save As failed:', err);
+          // Fallback if something goes wrong (besides cancellation)
+          handleExport();
+        }
+      }
+    } else {
+      // Fallback for browsers without File System Access API (Firefox, Safari)
+      handleExport();
+    }
   };
 
   // --- Find & Replace Logic ---
@@ -277,10 +321,10 @@ const App: React.FC = () => {
         e.preventDefault();
         handleNewTab();
       }
-      // Ctrl+S (Visual save / could trigger export?)
+      // Ctrl+S for Save As
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        setIsSaved(true);
+        handleSaveAs();
       }
       // Ctrl+K for AI
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -298,7 +342,7 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [tabs]);
+  }, [tabs, activeTabId]); // Added activeTabId dependency so handleSaveAs has correct context
 
 
   // --- AI Interactions ---
@@ -347,6 +391,7 @@ const App: React.FC = () => {
           onRenameTab={handleRenameTab}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onExport={handleExport}
+          onSave={handleSaveAs}
         />
       </div>
 
