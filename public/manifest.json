@@ -8,13 +8,13 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "https://esm.sh/lucide-static@0.363.0/icons/file-text.svg",
+      "src": "/favicon.svg",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "https://esm.sh/lucide-static@0.363.0/icons/file-text.svg",
+      "src": "/favicon.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
