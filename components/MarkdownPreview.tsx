@@ -1,4 +1,4 @@
-import React, { forwardRef, useState } from 'react';
+import React, { forwardRef, useState, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -12,7 +12,7 @@ interface MarkdownPreviewProps {
   isZenMode: boolean;
 }
 
-const CodeBlock = ({ children, className, ...rest }: any) => {
+const CodeBlock = memo(({ children, className, ...rest }: any) => {
   const [isCopied, setIsCopied] = useState(false);
   const match = /language-(\w+)/.exec(className || '');
   const codeString = String(children).replace(/\n$/, '');
@@ -30,6 +30,16 @@ const CodeBlock = ({ children, className, ...rest }: any) => {
       </code>
     );
   }
+
+  // Stable style object
+  const customStyle = { 
+    background: '#1e1e1e', 
+    margin: 0, 
+    padding: '1.5rem',
+    fontSize: '0.85em',
+    border: 'none',
+    borderRadius: 0
+  };
 
   return (
     <div className="relative group my-4 rounded-lg overflow-hidden border border-border">
@@ -49,18 +59,13 @@ const CodeBlock = ({ children, className, ...rest }: any) => {
         children={codeString}
         language={match[1]}
         style={vscDarkPlus}
-        customStyle={{ 
-            background: '#1e1e1e', 
-            margin: 0, 
-            padding: '1.5rem',
-            fontSize: '0.85em',
-            border: 'none',
-            borderRadius: 0
-        }}
+        customStyle={customStyle}
       />
     </div>
   );
-};
+});
+
+CodeBlock.displayName = 'CodeBlock';
 
 // Define stable references outside component to prevent re-renders
 const REMARK_PLUGINS = [remarkGfm];
@@ -68,7 +73,7 @@ const COMPONENTS = {
   code: CodeBlock
 };
 
-export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(({ content, fontFamily, onScroll, isZenMode }, ref) => {
+const MarkdownPreviewComponent = forwardRef<HTMLDivElement, MarkdownPreviewProps>(({ content, fontFamily, onScroll, isZenMode }, ref) => {
   const getFontClass = () => {
     switch(fontFamily) {
       case 'sans': return 'font-sans';
@@ -109,4 +114,6 @@ export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(
   );
 });
 
-MarkdownPreview.displayName = 'MarkdownPreview';
+MarkdownPreviewComponent.displayName = 'MarkdownPreview';
+
+export const MarkdownPreview = memo(MarkdownPreviewComponent);

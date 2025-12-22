@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useCallback } from 'react';
 import { ViewMode } from '../types';
 
 export const useScrollSync = (
@@ -10,7 +10,7 @@ export const useScrollSync = (
   const isSyncingLeft = useRef(false);
   const isSyncingRight = useRef(false);
 
-  const handleEditorScroll = () => {
+  const handleEditorScroll = useCallback(() => {
     if (!isEnabled || viewMode !== ViewMode.SPLIT) return;
     
     if (isSyncingRight.current) {
@@ -28,9 +28,9 @@ export const useScrollSync = (
         
         preview.scrollTop = targetScroll;
     }
-  };
+  }, [isEnabled, viewMode]);
 
-  const handlePreviewScroll = () => {
+  const handlePreviewScroll = useCallback(() => {
     if (!isEnabled || viewMode !== ViewMode.SPLIT) return;
     
     if (isSyncingLeft.current) {
@@ -48,7 +48,7 @@ export const useScrollSync = (
         
         editor.scrollTop = targetScroll;
     }
-  };
+  }, [isEnabled, viewMode]);
 
   return { handleEditorScroll, handlePreviewScroll };
 };
