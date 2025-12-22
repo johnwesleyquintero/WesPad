@@ -114,18 +114,34 @@ const App: React.FC = () => {
 
   // --- Handlers ---
 
+  const handleRenameTab = (id: string, newTitle: string) => {
+    setTabs(prev => prev.map(tab => {
+      if (tab.id === id) {
+        return { 
+          ...tab, 
+          title: newTitle.trim() || 'Untitled', 
+          isCustomTitle: true, // Mark as custom to prevent auto-overwrite
+          lastModified: Date.now() 
+        };
+      }
+      return tab;
+    }));
+  };
+
   const handleUpdateContent = (newContent: string) => {
     setIsSaved(false);
     setTabs(prev => prev.map(tab => {
       if (tab.id === activeTabId) {
         let newTitle = tab.title;
-        const firstLine = newContent.split('\n')[0].trim();
-        // Update title if it's generic 'Untitled' or started from default, but don't overwrite user custom filenames if we had that feature (later)
-        // For now, simple logic: if first line is markdown header, use it.
-        if (firstLine.startsWith('# ')) {
-          newTitle = firstLine.substring(2).trim().substring(0, 20) || 'Untitled';
-        } else if (newContent.trim() === '') {
-            newTitle = 'Untitled';
+        
+        // Only auto-update title if user hasn't explicitly renamed it
+        if (!tab.isCustomTitle) {
+          const firstLine = newContent.split('\n')[0].trim();
+          if (firstLine.startsWith('# ')) {
+            newTitle = firstLine.substring(2).trim().substring(0, 20) || 'Untitled';
+          } else if (newContent.trim() === '') {
+              newTitle = 'Untitled';
+          }
         }
         
         return { ...tab, content: newContent, title: newTitle, lastModified: Date.now() };
@@ -249,6 +265,7 @@ const App: React.FC = () => {
           onTabClick={setActiveTabId}
           onTabClose={handleCloseTab}
           onNewTab={handleNewTab}
+          onRenameTab={handleRenameTab}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onExport={handleExport}
         />

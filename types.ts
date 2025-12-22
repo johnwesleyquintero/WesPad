@@ -3,6 +3,7 @@ export interface Tab {
   title: string;
   content: string;
   lastModified: number;
+  isCustomTitle?: boolean;
 }
 
 export interface CursorPosition {

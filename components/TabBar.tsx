@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Tab } from '../types';
 import { Plus, X, FileText, Settings, Download } from 'lucide-react';
 
@@ -8,6 +8,7 @@ interface TabBarProps {
   onTabClick: (id: string) => void;
   onTabClose: (id: string, e: React.MouseEvent) => void;
   onNewTab: () => void;
+  onRenameTab: (id: string, newTitle: string) => void;
   onOpenSettings: () => void;
   onExport: () => void;
 }
@@ -18,9 +19,42 @@ export const TabBar: React.FC<TabBarProps> = ({
   onTabClick, 
   onTabClose, 
   onNewTab,
+  onRenameTab,
   onOpenSettings,
   onExport
 }) => {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingId]);
+
+  const handleDoubleClick = (e: React.MouseEvent, tab: Tab) => {
+    e.stopPropagation();
+    setEditingId(tab.id);
+    setEditValue(tab.title);
+  };
+
+  const handleSave = () => {
+    if (editingId) {
+      onRenameTab(editingId, editValue);
+      setEditingId(null);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      setEditingId(null);
+    }
+  };
+
   return (
     <div className="flex flex-row items-center bg-neutral-950 border-b border-neutral-800 h-10 overflow-x-auto select-none no-scrollbar">
       {tabs.map((tab) => (
@@ -35,15 +69,34 @@ export const TabBar: React.FC<TabBarProps> = ({
               : 'bg-neutral-950 text-neutral-500 hover:bg-neutral-900 hover:text-neutral-300 border-t-2 border-t-transparent'}
           `}
         >
-          <FileText size={14} className="mr-2 opacity-50" />
-          <span className="truncate text-xs font-medium flex-1">
-            {tab.title || 'Untitled'}
-          </span>
+          <FileText size={14} className="mr-2 opacity-50 flex-shrink-0" />
+          
+          {editingId === tab.id ? (
+             <input
+                ref={inputRef}
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleSave}
+                onKeyDown={handleKeyDown}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-neutral-800 text-white text-xs font-medium focus:outline-none w-full px-1 border border-neutral-600 rounded"
+             />
+          ) : (
+             <span 
+               className="truncate text-xs font-medium flex-1"
+               onDoubleClick={(e) => handleDoubleClick(e, tab)}
+               title="Double-click to rename"
+             >
+               {tab.title || 'Untitled'}
+             </span>
+          )}
+
           <button
             onClick={(e) => onTabClose(tab.id, e)}
             className={`
               ml-2 p-0.5 rounded-full hover:bg-neutral-700 hover:text-white
-              opacity-0 group-hover:opacity-100 transition-opacity
+              opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0
               ${activeTabId === tab.id ? 'opacity-100' : ''}
             `}
           >
