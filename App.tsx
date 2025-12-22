@@ -93,7 +93,7 @@ const App: React.FC = () => {
   };
 
   // --- Scroll Sync Handlers ---
-  const handleEditorScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+  const handleEditorScroll = (_: React.UIEvent<HTMLTextAreaElement>) => {
     if (!editorSettings.scrollSync || viewMode !== ViewMode.SPLIT) return;
     if (isSyncingRight.current) {
         isSyncingRight.current = false;
@@ -112,7 +112,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handlePreviewScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const handlePreviewScroll = (_: React.UIEvent<HTMLDivElement>) => {
     if (!editorSettings.scrollSync || viewMode !== ViewMode.SPLIT) return;
     if (isSyncingLeft.current) {
         isSyncingLeft.current = false;
