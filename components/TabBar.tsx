@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Tab } from '../types';
-import { Plus, X, FileText, Settings, Download, Save } from 'lucide-react';
+import { Plus, X, FileText, Settings, Download, Save, FolderOpen } from 'lucide-react';
 
 interface TabBarProps {
   tabs: Tab[];
@@ -12,6 +12,7 @@ interface TabBarProps {
   onOpenSettings: () => void;
   onExport: () => void;
   onSave: () => void;
+  onOpen: () => void;
 }
 
 export const TabBar: React.FC<TabBarProps> = ({ 
@@ -23,7 +24,8 @@ export const TabBar: React.FC<TabBarProps> = ({
   onRenameTab,
   onOpenSettings,
   onExport,
-  onSave
+  onSave,
+  onOpen
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -117,6 +119,15 @@ export const TabBar: React.FC<TabBarProps> = ({
       {/* Spacer to fill rest of bar */}
       <div className="flex-1 bg-neutral-950 h-full"></div>
       
+      {/* Open Button */}
+      <button 
+        onClick={onOpen}
+        className="h-full px-3 text-neutral-500 hover:text-white hover:bg-neutral-900 transition-colors flex items-center justify-center border-l border-neutral-800"
+        title="Open File (Ctrl+O)"
+      >
+        <FolderOpen size={16} />
+      </button>
+
       {/* Save Button */}
       <button 
         onClick={onSave}

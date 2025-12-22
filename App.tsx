@@ -54,6 +54,7 @@ const App: React.FC = () => {
 
   // --- Refs ---
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- Derived State ---
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
@@ -243,6 +244,73 @@ const App: React.FC = () => {
     }
   };
 
+  const handleOpenFile = async () => {
+    // Check for Native File System Access API support
+    // @ts-ignore
+    if (typeof window.showOpenFilePicker === 'function') {
+        try {
+            // @ts-ignore
+            const [fileHandle] = await window.showOpenFilePicker({
+                types: [{
+                    description: 'Text Files',
+                    accept: {
+                        'text/*': ['.md', '.txt', '.json', '.js', '.ts', '.tsx', '.html', '.css']
+                    }
+                }],
+                multiple: false
+            });
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            
+            // Create new tab with file content
+            const newTab: Tab = {
+                id: `tab-${Date.now()}`,
+                title: file.name,
+                content: text,
+                lastModified: Date.now(),
+                isCustomTitle: true
+            };
+            setTabs(prev => [...prev, newTab]);
+            setActiveTabId(newTab.id);
+            setViewMode(ViewMode.EDIT);
+            
+        } catch (err: any) {
+             if (err.name !== 'AbortError') {
+                console.error('Open file failed:', err);
+                // Try fallback if native picker errors out (unlikely but safe)
+                fileInputRef.current?.click();
+             }
+        }
+    } else {
+        // Fallback: Click hidden file input
+        fileInputRef.current?.click();
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const text = e.target?.result as string;
+        
+        const newTab: Tab = {
+            id: `tab-${Date.now()}`,
+            title: file.name,
+            content: text,
+            lastModified: Date.now(),
+            isCustomTitle: true
+        };
+        setTabs(prev => [...prev, newTab]);
+        setActiveTabId(newTab.id);
+        setViewMode(ViewMode.EDIT);
+    };
+    reader.readAsText(file);
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  };
+
   // --- Find & Replace Logic ---
   
   const handleFindNext = (query: string, reverse: boolean = false) => {
@@ -321,6 +389,11 @@ const App: React.FC = () => {
         e.preventDefault();
         handleNewTab();
       }
+      // Ctrl+O for Open
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault();
+        handleOpenFile();
+      }
       // Ctrl+S for Save As
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
@@ -380,6 +453,15 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-neutral-950 text-neutral-200 font-sans overflow-hidden">
+      {/* Hidden File Input for Fallback Open */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileInputChange} 
+        className="hidden" 
+        accept=".md,.txt,.json,.js,.ts,.tsx,.html,.css"
+      />
+
       {/* 1. Header Area: Tab Bar */}
       <div className="flex-none">
         <TabBar 
@@ -392,6 +474,7 @@ const App: React.FC = () => {
           onOpenSettings={() => setIsSettingsOpen(true)}
           onExport={handleExport}
           onSave={handleSaveAs}
+          onOpen={handleOpenFile}
         />
       </div>
 

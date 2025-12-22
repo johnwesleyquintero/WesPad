@@ -36,8 +36,61 @@ export const Editor: React.FC<EditorProps> = ({
     handleSelect();
   };
 
-  // Basic indentation handling for Tab key
+  const handleFormat = (wrapper: string) => {
+    if (!editorRef.current) return;
+    
+    const start = editorRef.current.selectionStart;
+    const end = editorRef.current.selectionEnd;
+    const value = editorRef.current.value;
+    
+    const selectedText = value.substring(start, end);
+    const before = value.substring(0, start);
+    const after = value.substring(end);
+    
+    // Check if selection itself is wrapped
+    if (selectedText.startsWith(wrapper) && selectedText.endsWith(wrapper) && selectedText.length >= 2 * wrapper.length) {
+        const newText = selectedText.substring(wrapper.length, selectedText.length - wrapper.length);
+        const newValue = before + newText + after;
+        onChange(newValue);
+        setTimeout(() => {
+            if (editorRef.current) {
+                editorRef.current.focus();
+                editorRef.current.setSelectionRange(start, start + newText.length);
+            }
+        }, 0);
+        return;
+    }
+
+    // Check if surrounding text is wrapped
+    if (before.endsWith(wrapper) && after.startsWith(wrapper)) {
+        const newBefore = before.substring(0, before.length - wrapper.length);
+        const newAfter = after.substring(wrapper.length);
+        const newValue = newBefore + selectedText + newAfter;
+        onChange(newValue);
+        setTimeout(() => {
+            if (editorRef.current) {
+                editorRef.current.focus();
+                editorRef.current.setSelectionRange(start - wrapper.length, end - wrapper.length);
+            }
+        }, 0);
+        return;
+    }
+
+    // Apply wrapper
+    const newValue = before + wrapper + selectedText + wrapper + after;
+    onChange(newValue);
+    setTimeout(() => {
+        if (editorRef.current) {
+            editorRef.current.focus();
+            editorRef.current.setSelectionRange(start + wrapper.length, end + wrapper.length);
+        }
+    }, 0);
+  };
+
+  // Basic indentation handling for Tab key and Shortcuts
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const isMod = e.ctrlKey || e.metaKey;
+
     if (e.key === 'Tab') {
       e.preventDefault();
       if (!editorRef.current) return;
@@ -55,6 +108,19 @@ export const Editor: React.FC<EditorProps> = ({
             editorRef.current.selectionStart = editorRef.current.selectionEnd = start + 2;
         }
       }, 0);
+      return;
+    }
+
+    // Bold: Ctrl+B
+    if (isMod && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        handleFormat('**');
+    }
+
+    // Italic: Ctrl+I
+    if (isMod && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        handleFormat('*');
     }
   };
 
