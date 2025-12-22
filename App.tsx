@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CursorPosition, ViewMode, Toast } from './types';
 import { TabBar } from './components/TabBar';
 import { Editor } from './components/Editor';
@@ -80,9 +80,10 @@ const App: React.FC = () => {
   };
 
   // --- Toast Helpers ---
-  const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToasts(prev => [...prev, { id: Date.now().toString(), message, type }]);
-  };
+  }, []);
+  
   const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
   const handleSaveApiKey = (key: string) => {
     setApiKey(key);

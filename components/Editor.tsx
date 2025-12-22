@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useRef, memo } from 'react';
 import { CursorPosition } from '../types';
 import * as TextUtils from '../utils/textManipulation';
 import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2, Link as LinkIcon, CheckSquare } from 'lucide-react';
@@ -24,7 +24,7 @@ interface EditorProps {
   onError: (message: string) => void;
 }
 
-export const Editor: React.FC<EditorProps> = ({ 
+const EditorComponent: React.FC<EditorProps> = ({ 
   content, 
   onChange, 
   onCursorChange,
@@ -333,7 +333,7 @@ export const Editor: React.FC<EditorProps> = ({
                 }}
                 className={`
                     block w-full h-full bg-background text-text resize-none focus:outline-none 
-                    transition-all duration-300 leading-relaxed selection:bg-selection/30
+                    transition-colors duration-200 leading-relaxed selection:bg-selection/30
                     ${getFontFamily()}
                     ${settings.wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'}
                     ${isZenMode ? 'pt-16' : 'pt-24 pb-96'}
@@ -366,3 +366,5 @@ const ToolbarBtn = ({ onClick, icon, title }: { onClick: () => void, icon: React
         {icon}
     </button>
 );
+
+export const Editor = memo(EditorComponent);
