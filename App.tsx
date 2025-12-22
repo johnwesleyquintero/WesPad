@@ -8,7 +8,7 @@ import { AIPanel } from './components/AIPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { FindReplaceBar } from './components/FindReplaceBar';
 import { CommandPalette } from './components/CommandPalette';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Minimize2 } from 'lucide-react';
 
 const STORAGE_KEY_TABS = 'wespad_tabs';
 const STORAGE_KEY_ACTIVE = 'wespad_active_tab';
@@ -24,11 +24,10 @@ const DEFAULT_TAB: Tab = {
 
 A sovereign, local-first, AI-optional writing pad.
 
-## Features
-- **Local-first**: Data lives in your browser.
-- **Markdown**: First-class citizen.
-- **AI-Ready**: Integrate Gemini for rewriting and summarizing.
-- **No bloat**: Just writing.
+## New Features
+- **Zen Mode**: Press \`Alt+Z\` to focus.
+- **Reading Time**: See estimate in the footer.
+- **Scroll Past End**: Type comfortably in the middle of the screen.
 
 Start typing...
 `,
@@ -52,6 +51,7 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFindOpen, setIsFindOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isZenMode, setIsZenMode] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [editorSettings, setEditorSettings] = useState(DEFAULT_SETTINGS);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
@@ -63,12 +63,11 @@ const App: React.FC = () => {
   // --- Derived State ---
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
   
-  // Calculate Word Count
-  const wordCount = activeTab.content
-    .trim()
-    .split(/\s+/)
-    .filter(word => word.length > 0)
-    .length;
+  // Calculate Word Count & Reading Time
+  const words = activeTab.content.trim().split(/\s+/).filter(word => word.length > 0);
+  const wordCount = words.length;
+  // Avg reading speed ~225 wpm
+  const readingTime = Math.ceil(wordCount / 225);
 
   // --- Persistence Effects ---
   
@@ -109,10 +108,6 @@ const App: React.FC = () => {
 
     if (savedTheme) {
       setTheme(savedTheme);
-    } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-       // Optional: Auto-detect system preference if not set
-       // setTheme('light'); 
-       // Keeping default dark for now as per design principles, but user can switch.
     }
   }, []);
 
@@ -434,11 +429,20 @@ const App: React.FC = () => {
           setIsAIPanelOpen(false);
           setIsCommandPaletteOpen(false);
       }
+      // Alt+Z for Zen Mode
+      if (e.altKey && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          setIsZenMode(prev => !prev);
+      }
+      // Escape closes Zen Mode if active
+      if (e.key === 'Escape' && isZenMode) {
+          setIsZenMode(false);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [tabs, activeTabId]);
+  }, [tabs, activeTabId, isZenMode]);
 
 
   // --- AI Interactions ---
@@ -485,21 +489,23 @@ const App: React.FC = () => {
         accept=".md,.txt,.json,.js,.ts,.tsx,.html,.css"
       />
 
-      {/* 1. Header Area: Tab Bar */}
-      <div className="flex-none">
-        <TabBar 
-          tabs={tabs}
-          activeTabId={activeTabId}
-          onTabClick={setActiveTabId}
-          onTabClose={handleCloseTab}
-          onNewTab={handleNewTab}
-          onRenameTab={handleRenameTab}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onExport={handleExport}
-          onSave={handleSaveAs}
-          onOpen={handleOpenFile}
-        />
-      </div>
+      {/* 1. Header Area: Tab Bar (Hidden in Zen Mode) */}
+      {!isZenMode && (
+        <div className="flex-none print:hidden">
+          <TabBar 
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onTabClick={setActiveTabId}
+            onTabClose={handleCloseTab}
+            onNewTab={handleNewTab}
+            onRenameTab={handleRenameTab}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onExport={handleExport}
+            onSave={handleSaveAs}
+            onOpen={handleOpenFile}
+          />
+        </div>
+      )}
 
       {/* 2. Main Content Area */}
       <div className="flex-1 flex overflow-hidden relative">
@@ -526,6 +532,7 @@ const App: React.FC = () => {
                onSettings: () => setIsSettingsOpen(true),
                onAI: () => setIsAIPanelOpen(true),
                onFind: () => setIsFindOpen(true),
+               onToggleZen: () => setIsZenMode(prev => !prev),
                setViewMode: setViewMode
            }}
         />
@@ -551,15 +558,26 @@ const App: React.FC = () => {
             onOpenSettings={() => setIsSettingsOpen(true)}
         />
 
-        {/* AI Trigger Button (Floating) - Only visible in EDIT mode */}
-        {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && (
+        {/* AI Trigger Button (Floating) - Only visible in EDIT mode (and NOT Zen Mode) */}
+        {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && !isZenMode && (
             <button 
                 onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
-                className="absolute top-4 right-6 z-40 bg-surface/90 hover:bg-surface text-muted hover:text-text border border-border p-2 rounded-full shadow-lg backdrop-blur-sm transition-all"
+                className="absolute top-4 right-6 z-40 bg-surface/90 hover:bg-surface text-muted hover:text-text border border-border p-2 rounded-full shadow-lg backdrop-blur-sm transition-all print:hidden"
                 title="Open AI Tools (Ctrl+K)"
             >
                 <Sparkles size={18} />
             </button>
+        )}
+
+        {/* Zen Mode Exit Button (Only visible in Zen Mode) */}
+        {isZenMode && (
+           <button 
+              onClick={() => setIsZenMode(false)}
+              className="absolute top-4 right-6 z-40 bg-surface/50 hover:bg-surface text-muted hover:text-text border border-border p-2 rounded-full shadow-lg backdrop-blur-sm transition-all animate-in fade-in print:hidden"
+              title="Exit Zen Mode (Esc)"
+           >
+              <Minimize2 size={18} />
+           </button>
         )}
 
         {/* Editor Pane */}
@@ -583,17 +601,20 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* 3. Footer: Status Bar */}
-      <div className="flex-none">
-        <StatusBar 
-          cursor={cursor}
-          characterCount={activeTab.content.length}
-          wordCount={wordCount}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          isSaved={isSaved}
-        />
-      </div>
+      {/* 3. Footer: Status Bar (Hidden in Zen Mode) */}
+      {!isZenMode && (
+        <div className="flex-none print:hidden">
+          <StatusBar 
+            cursor={cursor}
+            characterCount={activeTab.content.length}
+            wordCount={wordCount}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            isSaved={isSaved}
+            readingTime={readingTime}
+          />
+        </div>
+      )}
     </div>
   );
 };

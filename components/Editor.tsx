@@ -136,7 +136,7 @@ export const Editor: React.FC<EditorProps> = ({
     <textarea
       ref={editorRef}
       className={`
-        w-full h-full bg-background text-text p-4 resize-none focus:outline-none selection:bg-muted/30
+        w-full h-full bg-background text-text p-4 pb-96 resize-none focus:outline-none selection:bg-muted/30
         transition-colors duration-200
         ${getFontFamily()}
         ${settings.wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'}

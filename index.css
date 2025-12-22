@@ -44,3 +44,35 @@ textarea:focus {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
 }
+
+/* Print Styling for PDF Export */
+@media print {
+  /* Hide UI elements specifically */
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  /* Reset layout for printing */
+  html, body, #root {
+    height: auto;
+    overflow: visible;
+    background-color: white;
+    color: black;
+  }
+
+  /* Editor and Preview should take up full width and no scroll */
+  textarea, .prose {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+  }
+  
+  /* Ensure text color is black for saving ink */
+  body {
+    color: black !important;
+    background: white !important;
+  }
+}

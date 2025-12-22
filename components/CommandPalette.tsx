@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   FilePlus, FolderOpen, Save, Download, Settings, 
-  Sparkles, Eye, Columns, PenTool, Search, Command 
+  Sparkles, Eye, Columns, PenTool, Search, Command, Maximize2 
 } from 'lucide-react';
 import { ViewMode } from '../types';
 
@@ -16,6 +16,7 @@ interface CommandPaletteProps {
     onSettings: () => void;
     onAI: () => void;
     onFind: () => void;
+    onToggleZen: () => void;
     setViewMode: (mode: ViewMode) => void;
   }
 }
@@ -35,6 +36,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
   const listRef = useRef<HTMLDivElement>(null);
 
   const commands: CommandOption[] = [
+    { id: 'zen-mode', label: 'Toggle Zen Mode', icon: <Maximize2 size={16} />, action: actions.onToggleZen, shortcut: 'Alt+Z' },
     { id: 'new-tab', label: 'New Tab', icon: <FilePlus size={16} />, action: actions.onNewTab, shortcut: 'Ctrl+N' },
     { id: 'open-file', label: 'Open File', icon: <FolderOpen size={16} />, action: actions.onOpenFile, shortcut: 'Ctrl+O' },
     { id: 'save-as', label: 'Save As...', icon: <Save size={16} />, action: actions.onSaveAs, shortcut: 'Ctrl+S' },
