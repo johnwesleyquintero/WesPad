@@ -5,6 +5,7 @@ import { Columns, Eye, PenTool } from 'lucide-react';
 interface StatusBarProps {
   cursor: CursorPosition;
   characterCount: number;
+  wordCount: number;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   isSaved: boolean;
@@ -13,6 +14,7 @@ interface StatusBarProps {
 export const StatusBar: React.FC<StatusBarProps> = ({ 
   cursor, 
   characterCount, 
+  wordCount,
   viewMode, 
   setViewMode,
   isSaved 
@@ -21,8 +23,11 @@ export const StatusBar: React.FC<StatusBarProps> = ({
     <div className="h-7 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between px-3 text-[10px] sm:text-xs text-neutral-500 select-none">
       <div className="flex items-center space-x-4">
         <span className="w-24 font-mono">Ln {cursor.line}, Col {cursor.column}</span>
-        <span className="w-24 font-mono">{characterCount} chars</span>
-        <span className={isSaved ? 'text-neutral-500' : 'text-neutral-200'}>
+        <div className="flex items-center space-x-3 border-l border-neutral-800 pl-4">
+            <span className="font-mono">{wordCount} words</span>
+            <span className="font-mono">{characterCount} chars</span>
+        </div>
+        <span className={`border-l border-neutral-800 pl-4 ${isSaved ? 'text-neutral-500' : 'text-neutral-200'}`}>
           {isSaved ? 'Saved' : 'Unsaved'}
         </span>
       </div>

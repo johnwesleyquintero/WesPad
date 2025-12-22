@@ -7,6 +7,7 @@ import { MarkdownPreview } from './components/MarkdownPreview';
 import { AIPanel } from './components/AIPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { FindReplaceBar } from './components/FindReplaceBar';
+import { CommandPalette } from './components/CommandPalette';
 import { Sparkles } from 'lucide-react';
 
 const STORAGE_KEY_TABS = 'wespad_tabs';
@@ -49,6 +50,7 @@ const App: React.FC = () => {
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFindOpen, setIsFindOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [editorSettings, setEditorSettings] = useState(DEFAULT_SETTINGS);
 
@@ -58,6 +60,13 @@ const App: React.FC = () => {
 
   // --- Derived State ---
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
+  
+  // Calculate Word Count
+  const wordCount = activeTab.content
+    .trim()
+    .split(/\s+/)
+    .filter(word => word.length > 0)
+    .length;
 
   // --- Persistence Effects ---
   
@@ -222,11 +231,7 @@ const App: React.FC = () => {
         await writable.write(activeTab.content);
         await writable.close();
         
-        // Optional: Update title if user changed it in the dialog? 
-        // For now, we just mark as saved locally.
         setIsSaved(true);
-        
-        // If the file handle gave us a name, we could update the tab title
         if (fileHandle.name) {
              handleRenameTab(activeTabId, fileHandle.name);
         }
@@ -234,12 +239,10 @@ const App: React.FC = () => {
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           console.error('Save As failed:', err);
-          // Fallback if something goes wrong (besides cancellation)
           handleExport();
         }
       }
     } else {
-      // Fallback for browsers without File System Access API (Firefox, Safari)
       handleExport();
     }
   };
@@ -262,7 +265,6 @@ const App: React.FC = () => {
             const file = await fileHandle.getFile();
             const text = await file.text();
             
-            // Create new tab with file content
             const newTab: Tab = {
                 id: `tab-${Date.now()}`,
                 title: file.name,
@@ -277,12 +279,10 @@ const App: React.FC = () => {
         } catch (err: any) {
              if (err.name !== 'AbortError') {
                 console.error('Open file failed:', err);
-                // Try fallback if native picker errors out (unlikely but safe)
                 fileInputRef.current?.click();
              }
         }
     } else {
-        // Fallback: Click hidden file input
         fileInputRef.current?.click();
     }
   };
@@ -307,7 +307,6 @@ const App: React.FC = () => {
         setViewMode(ViewMode.EDIT);
     };
     reader.readAsText(file);
-    // Reset input so same file can be selected again
     e.target.value = '';
   };
 
@@ -325,13 +324,11 @@ const App: React.FC = () => {
           const textBefore = text.substring(0, startPos);
           nextIndex = textBefore.lastIndexOf(query);
           if (nextIndex === -1) {
-              // Wrap around to end
               nextIndex = text.lastIndexOf(query);
           }
       } else {
           nextIndex = text.indexOf(query, startPos);
           if (nextIndex === -1) {
-              // Wrap around to start
               nextIndex = text.indexOf(query);
           }
       }
@@ -351,11 +348,9 @@ const App: React.FC = () => {
       const currentSelection = textarea.value.substring(start, end);
 
       if (currentSelection === find) {
-          // Replace selection
           const newVal = textarea.value.substring(0, start) + replace + textarea.value.substring(end);
           handleUpdateContent(newVal);
           
-          // Restore cursor and find next
           setTimeout(() => {
               if (editorRef.current) {
                 editorRef.current.setSelectionRange(start + replace.length, start + replace.length);
@@ -363,15 +358,12 @@ const App: React.FC = () => {
               }
           }, 0);
       } else {
-          // If not currently selected, just find next first
           handleFindNext(find);
       }
   };
 
   const handleReplaceAll = (find: string, replace: string) => {
       if (!find) return;
-      // Global replace
-      // Escape regex special characters in find string
       const escapedFind = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(escapedFind, 'g');
       const newVal = activeTab.content.replace(regex, replace);
@@ -384,6 +376,13 @@ const App: React.FC = () => {
   // --- Keyboard Shortcuts ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Shift+P for Command Palette
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+          e.preventDefault();
+          setIsCommandPaletteOpen(true);
+          return;
+      }
+      
       // Ctrl+N for New Tab
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
@@ -404,18 +403,20 @@ const App: React.FC = () => {
          e.preventDefault();
          setIsAIPanelOpen(prev => !prev);
          setIsFindOpen(false);
+         setIsCommandPaletteOpen(false);
       }
       // Ctrl+F for Find
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
           e.preventDefault();
           setIsFindOpen(prev => !prev);
           setIsAIPanelOpen(false);
+          setIsCommandPaletteOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [tabs, activeTabId]); // Added activeTabId dependency so handleSaveAs has correct context
+  }, [tabs, activeTabId]);
 
 
   // --- AI Interactions ---
@@ -490,6 +491,21 @@ const App: React.FC = () => {
           onSaveEditorSettings={setEditorSettings}
         />
 
+        <CommandPalette 
+           isOpen={isCommandPaletteOpen}
+           onClose={() => setIsCommandPaletteOpen(false)}
+           actions={{
+               onNewTab: handleNewTab,
+               onOpenFile: handleOpenFile,
+               onSaveAs: handleSaveAs,
+               onExport: handleExport,
+               onSettings: () => setIsSettingsOpen(true),
+               onAI: () => setIsAIPanelOpen(true),
+               onFind: () => setIsFindOpen(true),
+               setViewMode: setViewMode
+           }}
+        />
+
         {/* Find & Replace Bar */}
         <FindReplaceBar 
             isOpen={isFindOpen}
@@ -548,6 +564,7 @@ const App: React.FC = () => {
         <StatusBar 
           cursor={cursor}
           characterCount={activeTab.content.length}
+          wordCount={wordCount}
           viewMode={viewMode}
           setViewMode={setViewMode}
           isSaved={isSaved}
