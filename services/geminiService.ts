@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Chat } from "@google/genai";
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 
@@ -12,6 +12,19 @@ const getClient = (apiKey?: string) => {
     throw new Error("Missing API Key. Please configure it in Settings.");
   }
   return new GoogleGenAI({ apiKey: key });
+};
+
+/**
+ * Creates a stateful chat session.
+ */
+export const createChatSession = (apiKey?: string, systemInstruction?: string): Chat => {
+  const ai = getClient(apiKey);
+  return ai.chats.create({
+    model: MODEL_NAME,
+    config: {
+      systemInstruction
+    }
+  });
 };
 
 /**
