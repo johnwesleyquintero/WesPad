@@ -9,6 +9,8 @@ No subscriptions. No forced logins. No telemetry.
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Status](https://img.shields.io/badge/status-alpha-orange.svg)
 
+<img width="700" alt="image" src="https://github.com/user-attachments/assets/59a85d2e-8abd-44e2-802d-ab41e844b53f" />
+
 ## 🎯 Vision
 
 Modern writing apps have become bloated SaaS platforms demanding monthly tithes for basic functionality. WesPad returns to first principles:

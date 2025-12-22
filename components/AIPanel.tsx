@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2 } from 'lucide-react';
+import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings, WifiOff } from 'lucide-react';
 import { Chat } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import * as geminiService from '../services/geminiService';
@@ -19,6 +19,7 @@ interface Message {
   role: 'user' | 'model';
   text: string;
   isError?: boolean;
+  isAuthError?: boolean;
 }
 
 export const AIPanel: React.FC<AIPanelProps> = ({ 
@@ -41,15 +42,18 @@ export const AIPanel: React.FC<AIPanelProps> = ({
 
   // Initialize Chat Session
   useEffect(() => {
-    if ((apiKey || (process.env.API_KEY)) && !chatSession) {
+    if ((apiKey || (process.env.API_KEY))) {
       try {
         const session = geminiService.createChatSession(apiKey, "You are a helpful, concise writing assistant embedded in a Markdown editor. Keep answers brief and relevant to writing tasks.");
         setChatSession(session);
       } catch (e) {
         console.error("Failed to init chat", e);
+        // If init fails (rare, usually just returns object), we can't do much here until they try to send
       }
+    } else {
+        setChatSession(null);
     }
-  }, [apiKey, chatSession]);
+  }, [apiKey]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -66,24 +70,45 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   }, [isOpen]);
 
   const handleSendMessage = async (text: string, context?: string) => {
-    if (!text.trim() || !chatSession) return;
+    if (!text.trim()) return;
     
-    setIsLoading(true);
+    const displayText = text;
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', text: displayText };
     
-    // Construct the actual prompt sending to AI
-    let fullPrompt = text;
-    let displayText = text;
-
-    if (context) {
-        fullPrompt = `Context:\n"""\n${context}\n"""\n\nTask: ${text}`;
-        // We don't change display text, we show context as a UI element in the message bubble if we wanted, 
-        // but for now, just showing the user's command is cleaner. 
-        // Or we can append a small note.
+    // 1. Check Offline Status
+    if (!navigator.onLine) {
+         setMessages(prev => [...prev, userMsg, { 
+            id: (Date.now() + 1).toString(), 
+            role: 'model', 
+            text: "**Offline Mode**\n\nI cannot process requests while you are offline. Please check your internet connection.", 
+            isError: true 
+        }]);
+        setInputValue('');
+        return;
     }
 
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', text: displayText };
+    // 2. Check Configuration
+    if (!chatSession) {
+         setMessages(prev => [...prev, userMsg, {
+            id: (Date.now() + 1).toString(),
+            role: 'model',
+            text: "**Setup Required**\n\nPlease configure your Google Gemini API key in Settings to continue.",
+            isError: true,
+            isAuthError: true
+        }]);
+        setInputValue('');
+        return;
+    }
+
+    setIsLoading(true);
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
+
+    // Construct the actual prompt sending to AI
+    let fullPrompt = text;
+    if (context) {
+        fullPrompt = `Context:\n"""\n${context}\n"""\n\nTask: ${text}`;
+    }
 
     try {
         const result = await chatSession.sendMessage({ message: fullPrompt });
@@ -97,11 +122,26 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             }]);
         }
     } catch (e: any) {
+        console.error(e);
+        let errorText = "Something went wrong.";
+        let isAuthError = false;
+
+        // Categorize errors
+        if (e.message?.includes('API key') || e.status === 400 || e.status === 403) {
+            errorText = "**Authentication Failed**\n\nYour API Key appears to be invalid or has expired.";
+            isAuthError = true;
+        } else if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError')) {
+            errorText = "**Network Error**\n\nUnable to reach Google's servers. Please check your connection.";
+        } else {
+            errorText = `**Error**\n\n${e.message || 'An unexpected error occurred.'}`;
+        }
+
         setMessages(prev => [...prev, { 
             id: (Date.now() + 1).toString(), 
             role: 'model', 
-            text: `Error: ${e.message || 'Something went wrong.'}`, 
-            isError: true 
+            text: errorText, 
+            isError: true,
+            isAuthError
         }]);
     } finally {
         setIsLoading(false);
@@ -109,19 +149,19 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   };
 
   const handleClearChat = () => {
-    setMessages([{ id: 'welcome', role: 'model', text: "Chat cleared. ready for new ideas!" }]);
+    setMessages([{ id: 'welcome', role: 'model', text: "Chat cleared. Ready for new ideas!" }]);
     // Reset session to clear context window
-    try {
-        const session = geminiService.createChatSession(apiKey, "You are a helpful, concise writing assistant embedded in a Markdown editor. Keep answers brief and relevant to writing tasks.");
-        setChatSession(session);
-    } catch(e) { console.error(e) }
+    if (apiKey) {
+        try {
+            const session = geminiService.createChatSession(apiKey, "You are a helpful, concise writing assistant embedded in a Markdown editor. Keep answers brief and relevant to writing tasks.");
+            setChatSession(session);
+        } catch(e) { console.error(e) }
+    }
   };
 
   const hasKey = !!apiKey || (typeof process !== 'undefined' && !!process.env?.API_KEY);
 
-  // If panel is closed, we hide it instead of unmounting to preserve chat state
-  // Using a class to toggle visibility
-  if (!isOpen) return null; // We'll stick to simple conditional rendering for now as per previous constraints, unless user specifically asked for persistence. The user asked for "Integrate a chat interface". Unmounting on close is default behavior for the modal-like panel. I'll keep it simple.
+  if (!isOpen) return null;
 
   return (
     <div className="absolute top-12 right-4 w-80 sm:w-96 h-[500px] max-h-[80vh] bg-surface border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden text-text transition-all animate-in fade-in slide-in-from-top-2">
@@ -145,20 +185,21 @@ export const AIPanel: React.FC<AIPanelProps> = ({
       {/* Messages Area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-background/50">
         
-        {!hasKey && (
-             <div className="bg-surface border border-red-900/20 p-3 rounded-lg flex flex-col items-start gap-2">
-                <div className="flex items-center text-red-500 text-xs font-medium">
-                  <AlertCircle size={14} className="mr-1.5" />
-                  API Key Missing
+        {!hasKey && messages.length <= 1 && (
+             <div className="bg-surface border border-red-900/20 p-4 rounded-lg flex flex-col items-start gap-3">
+                <div className="flex items-center text-red-500 text-sm font-medium">
+                  <AlertCircle size={16} className="mr-2" />
+                  Setup Required
                 </div>
-                <p className="text-xs text-muted">
-                  Please configure your Google Gemini API key in Settings to use the chat.
+                <p className="text-xs text-muted leading-relaxed">
+                  WesPad uses your own Google Gemini API key. Data stays local in your browser.
                 </p>
                 <button 
-                  onClick={() => { onClose(); onOpenSettings(); }}
-                  className="text-xs bg-text text-background hover:opacity-80 px-2 py-1 rounded transition-colors"
+                  onClick={() => { onOpenSettings(); }}
+                  className="flex items-center text-xs bg-text text-background hover:opacity-90 px-3 py-1.5 rounded transition-all font-medium"
                 >
-                  Open Settings
+                  <Settings size={12} className="mr-1.5" />
+                  Configure API Key
                 </button>
               </div>
         )}
@@ -178,6 +219,17 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                      </div>
                 ) : (
                     <div className="whitespace-pre-wrap">{msg.text}</div>
+                )}
+                
+                {/* Action Button for Auth Errors */}
+                {msg.isAuthError && (
+                    <button 
+                        onClick={onOpenSettings}
+                        className="mt-3 flex items-center text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 px-2 py-1.5 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors w-full justify-center font-medium"
+                    >
+                        <Settings size={12} className="mr-1.5" />
+                        Open Settings
+                    </button>
                 )}
              </div>
              
@@ -262,13 +314,13 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                     handleSendMessage(inputValue, selectedText);
                 }
             }}
-            placeholder={selectedText ? "Ask about selection..." : "Ask WesPad AI..."}
-            disabled={!hasKey || isLoading}
-            className="flex-1 bg-surface border border-border rounded-lg pl-3 pr-10 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-text/50 disabled:opacity-50 transition-all placeholder:text-muted/70"
+            placeholder={!navigator.onLine ? "Offline" : selectedText ? "Ask about selection..." : "Ask WesPad AI..."}
+            disabled={isLoading || !navigator.onLine}
+            className="flex-1 bg-surface border border-border rounded-lg pl-3 pr-10 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-text/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all placeholder:text-muted/70"
           />
           <button
             onClick={() => handleSendMessage(inputValue, selectedText)}
-            disabled={!inputValue.trim() || !hasKey || isLoading}
+            disabled={!inputValue.trim() || isLoading || !navigator.onLine}
             className="absolute right-1.5 bottom-1.5 p-1.5 bg-text text-background rounded-md hover:opacity-90 disabled:opacity-0 disabled:cursor-not-allowed transition-all"
           >
             <Send size={14} />
