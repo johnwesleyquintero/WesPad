@@ -20,6 +20,8 @@ interface EditorProps {
   onSaveState: (state: { scrollTop: number; selection: { start: number; end: number } }) => void;
   isZenMode: boolean;
   onScroll?: (e: React.UIEvent<HTMLTextAreaElement>) => void;
+  apiKey: string;
+  onError: (message: string) => void;
 }
 
 export const Editor: React.FC<EditorProps> = ({ 
@@ -33,7 +35,9 @@ export const Editor: React.FC<EditorProps> = ({
   initialSelection,
   onSaveState,
   isZenMode,
-  onScroll
+  onScroll,
+  apiKey,
+  onError
 }) => {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
 
@@ -140,15 +144,24 @@ export const Editor: React.FC<EditorProps> = ({
 
   const handleQuickAiRewrite = async () => {
     if (!editorRef.current) return;
+    
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        onError("You are offline. AI features require an internet connection.");
+        return;
+    }
+
     const start = editorRef.current.selectionStart;
     const end = editorRef.current.selectionEnd;
     const text = editorRef.current.value.substring(start, end);
 
-    if (!text.trim()) return;
+    if (!text.trim()) {
+        onError("Please select some text to polish.");
+        return;
+    }
 
     setIsAiProcessing(true);
     try {
-        const rewritten = await rewriteText(text);
+        const rewritten = await rewriteText(text, apiKey);
         if (rewritten) {
             const newValue = editorRef.current.value.substring(0, start) + rewritten + editorRef.current.value.substring(end);
             onChange(newValue);
@@ -162,9 +175,13 @@ export const Editor: React.FC<EditorProps> = ({
                 }
             }, 0);
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error("AI Rewrite failed", error);
-        // Could dispatch a toast here via context if available, or just fail silently/log
+        if (error.message && error.message.includes('API Key')) {
+            onError("Missing API Key. Please configure it in Settings.");
+        } else {
+            onError("Quick Polish failed. Please check your API key.");
+        }
     } finally {
         setIsAiProcessing(false);
     }

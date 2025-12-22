@@ -228,10 +228,20 @@ const App: React.FC = () => {
         {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && (
           <div className={`${viewMode === ViewMode.SPLIT ? 'w-1/2 border-r border-border' : 'w-full'} h-full bg-background`}>
             <Editor 
-              key={activeTabId} content={activeTab.content} onChange={updateContent} onCursorChange={setCursor} onSelectionStatsChange={setSelectionStats}
-              editorRef={editorRef} settings={editorSettings} initialScrollTop={activeTab.scrollTop} initialSelection={activeTab.selection}
-              onSaveState={(state) => updateTabState(activeTabId, state)} isZenMode={isZenMode}
+              key={activeTabId} 
+              content={activeTab.content} 
+              onChange={updateContent} 
+              onCursorChange={setCursor} 
+              onSelectionStatsChange={setSelectionStats}
+              editorRef={editorRef} 
+              settings={editorSettings} 
+              initialScrollTop={activeTab.scrollTop} 
+              initialSelection={activeTab.selection}
+              onSaveState={(state) => updateTabState(activeTabId, state)} 
+              isZenMode={isZenMode}
               onScroll={handleEditorScroll}
+              apiKey={apiKey}
+              onError={(msg) => addToast(msg, 'error')}
             />
           </div>
         )}
