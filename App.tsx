@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Tab, CursorPosition, ViewMode } from './types';
 import { TabBar } from './components/TabBar';
 import { Editor } from './components/Editor';

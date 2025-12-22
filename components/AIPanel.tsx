@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Sparkles, X, Loader, Check, AlertCircle } from 'lucide-react';
-import { AIState } from '../types';
 import * as geminiService from '../services/geminiService';
 
 interface AIPanelProps {
@@ -70,7 +69,9 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   };
 
   const hasSelection = selectedText.length > 0;
-  const hasKey = !!apiKey || (typeof process !== 'undefined' && !!process.env?.API_KEY);
+  // Type-safe check for process.env
+  const hasEnvKey = typeof process !== 'undefined' && process.env && process.env.API_KEY;
+  const hasKey = !!apiKey || !!hasEnvKey;
 
   return (
     <div className="absolute top-12 right-4 w-80 sm:w-96 bg-slate-800 border border-slate-700 shadow-2xl rounded-lg flex flex-col z-50 overflow-hidden">

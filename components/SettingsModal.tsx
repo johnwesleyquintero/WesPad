@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Key, ExternalLink, Type, Monitor } from 'lucide-react';
+import { X, Save, Key, ExternalLink, Monitor } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
