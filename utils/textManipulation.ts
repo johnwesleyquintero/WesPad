@@ -15,11 +15,40 @@ interface MutationResult {
 
 export const handleTabIndentation = (state: TextState): MutationResult => {
   const { value, selectionStart, selectionEnd } = state;
-  const newValue = value.substring(0, selectionStart) + '  ' + value.substring(selectionEnd);
+
+  // 1. Single cursor: Insert 2 spaces
+  if (selectionStart === selectionEnd) {
+    const newValue = value.substring(0, selectionStart) + '  ' + value.substring(selectionEnd);
+    return {
+      newValue,
+      newSelectionStart: selectionStart + 2,
+      newSelectionEnd: selectionStart + 2,
+      shouldPreventDefault: true
+    };
+  }
+
+  // 2. Multi-line selection: Block Indent
+  // Identify start and end lines
+  const startLineIndex = value.lastIndexOf('\n', selectionStart - 1) + 1;
+  let endLineIndex = value.indexOf('\n', selectionEnd);
+  if (endLineIndex === -1) endLineIndex = value.length;
+
+  const affectedText = value.substring(startLineIndex, endLineIndex);
+  const lines = affectedText.split('\n');
+  
+  // Add indentation to each line
+  const indentedLines = lines.map(line => '  ' + line);
+  const newBlock = indentedLines.join('\n');
+  
+  const newValue = value.substring(0, startLineIndex) + newBlock + value.substring(endLineIndex);
+
+  // Calculate new selection range to cover the indented block
+  const addedChars = indentedLines.length * 2;
+
   return {
     newValue,
-    newSelectionStart: selectionStart + 2,
-    newSelectionEnd: selectionStart + 2,
+    newSelectionStart: startLineIndex, // Snap start to beginning of line
+    newSelectionEnd: selectionEnd + addedChars, // Extend end by total added spaces
     shouldPreventDefault: true
   };
 };

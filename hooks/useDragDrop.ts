@@ -33,6 +33,19 @@ export const useDragDrop = ({
       setDragType(isImage ? 'image' : 'file');
   };
 
+  const handleDragLeave = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Prevent flicker: Only hide if we are actually leaving the container,
+      // not just entering a child element (like the textarea)
+      if (e.currentTarget.contains(e.relatedTarget as Node)) {
+          return;
+      }
+      
+      setIsDragging(false);
+  };
+
   const handleDrop = async (e: React.DragEvent) => {
       e.preventDefault(); 
       e.stopPropagation();
@@ -74,8 +87,9 @@ export const useDragDrop = ({
   return {
     isDragging,
     dragType,
-    setIsDragging, // exposed for DragLeave
+    setIsDragging,
     handleDragOver,
+    handleDragLeave,
     handleDrop
   };
 };

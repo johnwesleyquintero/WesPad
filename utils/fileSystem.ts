@@ -8,6 +8,9 @@ export const saveFile = async (
   existingHandle?: any
 ): Promise<{ success: boolean; handle?: any; newFilename?: string }> => {
   
+  // Sanitize filename: remove common invalid chars
+  const safeName = filename.replace(/[^a-z0-9\.\-_ ]/gi, '_');
+
   // @ts-ignore - TS doesn't fully know FS API yet
   if (typeof window.showSaveFilePicker === 'function') {
     try {
@@ -15,7 +18,7 @@ export const saveFile = async (
       
       if (!fileHandle) {
         const options = {
-          suggestedName: filename.endsWith('.md') ? filename : `${filename}.md`,
+          suggestedName: safeName.endsWith('.md') ? safeName : `${safeName}.md`,
           types: [{
             description: 'Markdown File',
             accept: { 'text/markdown': ['.md', '.txt'] },
@@ -37,7 +40,7 @@ export const saveFile = async (
   }
 
   // Fallback
-  downloadFile(content, filename);
+  downloadFile(content, safeName);
   return { success: true };
 };
 

@@ -108,7 +108,7 @@ const App: React.FC = () => {
     previewRef
   );
 
-  const { isDragging, dragType, setIsDragging, handleDragOver, handleDrop } = useDragDrop({
+  const { isDragging, dragType, handleDragOver, handleDragLeave, handleDrop } = useDragDrop({
     createTab,
     updateContent,
     activeTab,
@@ -169,7 +169,7 @@ const App: React.FC = () => {
     <div 
       className="flex flex-col h-screen bg-background text-text font-sans overflow-hidden transition-colors duration-200 relative"
       onDragOver={handleDragOver}
-      onDragLeave={() => setIsDragging(false)}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
