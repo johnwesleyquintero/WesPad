@@ -8,7 +8,7 @@ import { AIPanel } from './components/AIPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { FindReplaceBar } from './components/FindReplaceBar';
 import { CommandPalette } from './components/CommandPalette';
-import { Sparkles, Minimize2, UploadCloud } from 'lucide-react';
+import { Sparkles, Minimize2, UploadCloud, Image as ImageIcon } from 'lucide-react';
 
 const STORAGE_KEY_TABS = 'wespad_tabs';
 const STORAGE_KEY_ACTIVE = 'wespad_active_tab';
@@ -26,7 +26,7 @@ A sovereign, local-first, AI-optional writing pad.
 
 ## New Features
 - **Smart Typing**: Auto-lists and auto-closing brackets.
-- **Drag & Drop**: Drop files here to open them.
+- **Drag & Drop**: Drop files here to open them. Drop images to embed them!
 - **Zen Mode**: Press \`Alt+Z\` to focus.
 
 Start typing...
@@ -59,6 +59,7 @@ const App: React.FC = () => {
   const [editorSettings, setEditorSettings] = useState(DEFAULT_SETTINGS);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [isDragging, setIsDragging] = useState(false);
+  const [dragType, setDragType] = useState<'file' | 'image' | null>(null);
 
   // --- Refs ---
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -445,36 +446,67 @@ const App: React.FC = () => {
   const handleDragOver = (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      // Check if we are dragging a file
-      if (e.dataTransfer.types.includes('Files')) {
-          if (!isDragging) setIsDragging(true);
+      if (!isDragging) setIsDragging(true);
+
+      // Detect if dragging an image
+      if (e.dataTransfer.items) {
+        for (let i = 0; i < e.dataTransfer.items.length; i++) {
+          if (e.dataTransfer.items[i].type.startsWith('image/')) {
+            setDragType('image');
+            return;
+          }
+        }
       }
+      setDragType('file');
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      // Ensure we only disable dragging if we leave the window entirely
-      // or if we hit the overlay itself specifically (depends on structure)
       if (e.currentTarget.contains(e.relatedTarget as Node)) return;
       setIsDragging(false);
+      setDragType(null);
   };
 
   const handleDrop = async (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
+      setDragType(null);
       
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
           const files = Array.from(e.dataTransfer.files);
           
           for (const file of files) {
-               // Only try to read text files
-               try {
-                  const text = await file.text();
-                  createTab(file.name, text);
-               } catch (err) {
-                   console.error("Could not read file", file.name, err);
+               if (file.type.startsWith('image/')) {
+                 // Handle Image Drop (Embed as Base64)
+                 const reader = new FileReader();
+                 reader.onload = (event) => {
+                   const base64 = event.target?.result as string;
+                   // Insert into active editor
+                   const markdownImage = `\n![${file.name}](${base64})\n`;
+                   
+                   // Find position: if editor ref exists, insert at selection, else append
+                   if (editorRef.current) {
+                      const start = editorRef.current.selectionStart;
+                      const end = editorRef.current.selectionEnd;
+                      const value = editorRef.current.value;
+                      const newValue = value.substring(0, start) + markdownImage + value.substring(end);
+                      handleUpdateContent(newValue);
+                   } else {
+                      handleUpdateContent(activeTab.content + markdownImage);
+                   }
+                 };
+                 reader.readAsDataURL(file);
+
+               } else {
+                  // Handle Text File Drop (New Tab)
+                  try {
+                      const text = await file.text();
+                      createTab(file.name, text);
+                  } catch (err) {
+                      console.error("Could not read file", file.name, err);
+                  }
                }
           }
       }
@@ -678,9 +710,17 @@ const App: React.FC = () => {
       {/* Drag Overlay */}
       {isDragging && (
           <div className="absolute inset-0 z-[100] bg-background/80 backdrop-blur-sm border-4 border-dashed border-text/20 flex flex-col items-center justify-center pointer-events-none transition-opacity">
-              <UploadCloud size={64} className="text-text mb-4 opacity-50" />
-              <div className="text-2xl font-bold text-text">Drop files to open</div>
-              <div className="text-muted mt-2">Markdown, Text, Code</div>
+              {dragType === 'image' ? (
+                 <ImageIcon size={64} className="text-text mb-4 opacity-50" />
+              ) : (
+                 <UploadCloud size={64} className="text-text mb-4 opacity-50" />
+              )}
+              <div className="text-2xl font-bold text-text">
+                  {dragType === 'image' ? "Drop image to embed" : "Drop file to open"}
+              </div>
+              <div className="text-muted mt-2">
+                  {dragType === 'image' ? "Will be inserted as Markdown" : "Markdown, Text, Code"}
+              </div>
           </div>
       )}
 

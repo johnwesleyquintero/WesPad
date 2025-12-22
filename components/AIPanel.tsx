@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings, Loader2, ArrowRight } from 'lucide-react';
+import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings, Loader2, ArrowRight, ChevronDown } from 'lucide-react';
 import { Chat, GenerateContentResponse } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import * as geminiService from '../services/geminiService';
 
 interface AIPanelProps {
@@ -24,6 +26,8 @@ interface Message {
   isStreaming?: boolean;
 }
 
+type ToneType = 'Professional' | 'Casual' | 'Creative' | 'Academic' | 'Concise';
+
 export const AIPanel: React.FC<AIPanelProps> = ({ 
   isOpen, 
   onClose, 
@@ -40,6 +44,8 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [chatSession, setChatSession] = useState<Chat | null>(null);
+  const [activeTone, setActiveTone] = useState<ToneType>('Professional');
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -79,7 +85,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     }
   }, [isOpen]);
 
-  const handleSendMessage = async (text: string, context?: string) => {
+  const handleSendMessage = async (text: string, context?: string, overridePrompt?: string) => {
     if (!text.trim()) return;
     
     const displayText = text;
@@ -115,9 +121,18 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     setInputValue('');
 
     // Construct the actual prompt sending to AI
-    let fullPrompt = text;
-    if (context) {
-        fullPrompt = `Context:\n"""\n${context}\n"""\n\nTask: ${text}`;
+    let fullPrompt = "";
+    
+    if (overridePrompt) {
+        fullPrompt = overridePrompt;
+    } else {
+        const toneInstruction = `Adopt a ${activeTone.toLowerCase()} tone.`;
+        
+        if (context) {
+            fullPrompt = `Context:\n"""\n${context}\n"""\n\n${toneInstruction}\nTask: ${text}`;
+        } else {
+            fullPrompt = `${toneInstruction}\nTask: ${text}`;
+        }
     }
 
     try {
@@ -204,7 +219,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-12 right-4 w-80 sm:w-96 h-[500px] max-h-[80vh] bg-surface border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden text-text transition-all animate-in fade-in slide-in-from-top-2">
+    <div className="absolute top-12 right-4 w-80 sm:w-96 h-[550px] max-h-[85vh] bg-surface border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden text-text transition-all animate-in fade-in slide-in-from-top-2">
       
       {/* Header */}
       <div className="flex items-center justify-between p-3 bg-background border-b border-border flex-none">
@@ -220,6 +235,22 @@ export const AIPanel: React.FC<AIPanelProps> = ({
               <X size={16} />
             </button>
         </div>
+      </div>
+
+      {/* Tone Selector */}
+      <div className="px-3 py-2 bg-background border-b border-border flex items-center space-x-2 overflow-x-auto no-scrollbar">
+        {(['Professional', 'Casual', 'Creative', 'Academic', 'Concise'] as ToneType[]).map(tone => (
+            <button
+                key={tone}
+                onClick={() => setActiveTone(tone)}
+                className={`text-[10px] px-2 py-1 rounded-full border transition-colors flex-shrink-0
+                ${activeTone === tone 
+                    ? 'bg-text text-background border-text font-medium' 
+                    : 'bg-surface text-muted border-border hover:border-text hover:text-text'}`}
+            >
+                {tone}
+            </button>
+        ))}
       </div>
 
       {/* Messages Area */}
@@ -247,7 +278,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
         {messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
              <div className={`
-                max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm relative
+                max-w-[90%] rounded-2xl px-3 py-2 text-sm shadow-sm relative
                 ${msg.role === 'user' 
                     ? 'bg-text text-background rounded-br-none' 
                     : 'bg-surface text-text border border-border rounded-bl-none'}
@@ -255,7 +286,31 @@ export const AIPanel: React.FC<AIPanelProps> = ({
              `}>
                 {msg.role === 'model' ? (
                      <div className="prose prose-neutral dark:prose-invert prose-xs max-w-none leading-relaxed">
-                         <ReactMarkdown>{msg.text}</ReactMarkdown>
+                         <ReactMarkdown
+                            components={{
+                              code(props) {
+                                const {children, className, node, ...rest} = props;
+                                const match = /language-(\w+)/.exec(className || '');
+                                return match ? (
+                                  // @ts-ignore
+                                  <SyntaxHighlighter
+                                    {...rest}
+                                    PreTag="div"
+                                    children={String(children).replace(/\n$/, '')}
+                                    language={match[1]}
+                                    style={vscDarkPlus}
+                                    customStyle={{ background: 'var(--background)', margin: '0.5em 0', border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '0.85em' }}
+                                  />
+                                ) : (
+                                  <code {...rest} className={className}>
+                                    {children}
+                                  </code>
+                                );
+                              }
+                            }}
+                         >
+                            {msg.text}
+                         </ReactMarkdown>
                          {msg.isStreaming && (
                              <span className="inline-block w-2 h-4 align-middle ml-1 bg-muted animate-pulse"></span>
                          )}
@@ -338,7 +393,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                 {selectedText && (
                     <>
                     <button 
-                        onClick={() => handleSendMessage("Rewrite this text to be clearer and more professional.", selectedText)}
+                        onClick={() => handleSendMessage(`Rewrite this text to be more ${activeTone.toLowerCase()}.`, selectedText)}
                         className="px-2 py-0.5 bg-background border border-border rounded hover:border-text transition-colors text-[10px]"
                     >
                         Rewrite
@@ -352,7 +407,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                     </>
                 )}
                  <button 
-                    onClick={() => handleSendMessage("Continue writing based on this context. Maintain the style and flow.", selectedText || contextText)}
+                    onClick={() => handleSendMessage(`Continue writing based on this context. Keep it ${activeTone.toLowerCase()}.`, selectedText || contextText)}
                     className="flex items-center px-2 py-0.5 bg-background border border-border rounded hover:border-text transition-colors text-[10px]"
                     title="Generate continuation"
                 >
@@ -373,7 +428,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                     handleSendMessage(inputValue, selectedText || contextText);
                 }
             }}
-            placeholder={typeof navigator !== 'undefined' && !navigator.onLine ? "Offline" : selectedText ? "Ask about selection..." : "Ask WesPad AI..."}
+            placeholder={typeof navigator !== 'undefined' && !navigator.onLine ? "Offline" : selectedText ? `Ask to ${activeTone.toLowerCase()} rewrite...` : `Ask WesPad (${activeTone})...`}
             disabled={isLoading || (typeof navigator !== 'undefined' && !navigator.onLine)}
             className="flex-1 bg-surface border border-border rounded-lg pl-3 pr-10 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-text/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all placeholder:text-muted/70"
           />
