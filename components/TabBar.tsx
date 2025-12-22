@@ -68,101 +68,126 @@ export const TabBar: React.FC<TabBarProps> = ({
   };
 
   return (
-    <div className="flex flex-row items-center bg-background border-b border-border h-11 overflow-x-auto select-none no-scrollbar">
-      {/* Tabs Area */}
-      <div className="flex items-end h-full px-2 space-x-1">
-        {tabs.map((tab) => (
-            <div
-            key={tab.id}
-            onClick={() => onTabClick(tab.id)}
-            className={`
-                group relative flex items-center h-9 px-3 min-w-[140px] max-w-[220px] 
-                cursor-pointer transition-all duration-200 rounded-t-lg border-t border-x
-                ${activeTabId === tab.id 
-                ? 'bg-background border-border text-text shadow-sm -mb-px pb-1 z-10' 
-                : 'bg-surface/50 border-transparent text-muted hover:bg-surface hover:text-text mb-1'}
-            `}
-            >
-            <FileText size={13} className={`mr-2 flex-shrink-0 ${activeTabId === tab.id ? 'text-text' : 'text-muted'}`} />
-            
-            {editingId === tab.id ? (
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onBlur={handleSaveTitle}
-                    onKeyDown={handleKeyDown}
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-transparent text-text text-xs font-medium focus:outline-none w-full border-b border-text/20"
-                />
-            ) : (
-                <span 
-                className="truncate text-xs font-medium flex-1 pb-px"
-                onDoubleClick={(e) => handleDoubleClick(e, tab)}
-                title="Double-click to rename"
-                >
-                {tab.title || 'Untitled'}
-                </span>
-            )}
-
-            <button
-                onClick={(e) => onTabClose(tab.id, e)}
-                className={`
-                ml-2 p-0.5 rounded-full hover:bg-muted/20 text-muted hover:text-red-500
-                opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0
-                ${activeTabId === tab.id ? 'opacity-100' : ''}
-                `}
-            >
-                <X size={11} />
-            </button>
-            
-            {/* Active Indicator Line */}
-            {activeTabId === tab.id && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-text rounded-t-full"></div>
-            )}
-            </div>
-        ))}
-        <button
-            onClick={onNewTab}
-            className="h-8 w-8 mb-1 rounded-md text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center"
-            title="New Tab (Ctrl+N)"
+    <div className="flex flex-row items-center bg-background border-b border-border h-10 overflow-x-auto select-none no-scrollbar transition-colors">
+      {tabs.map((tab) => (
+        <div
+          key={tab.id}
+          onClick={() => onTabClick(tab.id)}
+          className={`
+            group flex items-center h-full px-3 min-w-[120px] max-w-[200px] 
+            border-r border-border cursor-pointer transition-colors duration-100
+            ${activeTabId === tab.id 
+              ? 'bg-surface text-text border-t-2 border-t-text' 
+              : 'bg-background text-muted hover:bg-surface hover:text-text border-t-2 border-t-transparent'}
+          `}
         >
-            <Plus size={16} />
+          <FileText size={14} className="mr-2 opacity-50 flex-shrink-0" />
+          
+          {editingId === tab.id ? (
+             <input
+                ref={inputRef}
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleSaveTitle}
+                onKeyDown={handleKeyDown}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-background text-text text-xs font-medium focus:outline-none w-full px-1 border border-border rounded"
+             />
+          ) : (
+             <span 
+               className="truncate text-xs font-medium flex-1"
+               onDoubleClick={(e) => handleDoubleClick(e, tab)}
+               title="Double-click to rename"
+             >
+               {tab.title || 'Untitled'}
+             </span>
+          )}
+
+          <button
+            onClick={(e) => onTabClose(tab.id, e)}
+            className={`
+              ml-2 p-0.5 rounded-full hover:bg-muted/20 hover:text-text
+              opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0
+              ${activeTabId === tab.id ? 'opacity-100' : ''}
+            `}
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+      <button
+        onClick={onNewTab}
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-r border-border"
+        title="New Tab (Ctrl+N)"
+      >
+        <Plus size={16} />
+      </button>
+      
+      {/* Spacer to fill rest of bar */}
+      <div className="flex-1 bg-background h-full"></div>
+      
+      {/* Undo/Redo Group */}
+      <div className="flex items-center border-l border-border h-full">
+        <button 
+          onClick={onUndo}
+          disabled={!canUndo}
+          className={`h-full px-3 flex items-center justify-center transition-colors
+            ${canUndo 
+              ? 'text-muted hover:text-text hover:bg-surface' 
+              : 'text-muted/30 cursor-not-allowed'}`}
+          title="Undo (Ctrl+Z)"
+        >
+          <Undo2 size={16} />
+        </button>
+        <button 
+          onClick={onRedo}
+          disabled={!canRedo}
+          className={`h-full px-3 flex items-center justify-center transition-colors border-r border-border
+            ${canRedo 
+              ? 'text-muted hover:text-text hover:bg-surface' 
+              : 'text-muted/30 cursor-not-allowed'}`}
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          <Redo2 size={16} />
         </button>
       </div>
-      
-      {/* Spacer */}
-      <div className="flex-1 h-full border-b border-border"></div>
-      
-      {/* Controls */}
-      <div className="flex items-center h-full border-b border-border px-2 space-x-1">
-        <div className="flex items-center space-x-1 pr-2 border-r border-border h-6 my-auto">
-            <IconButton onClick={onUndo} disabled={!canUndo} icon={<Undo2 size={15} />} title="Undo" />
-            <IconButton onClick={onRedo} disabled={!canRedo} icon={<Redo2 size={15} />} title="Redo" />
-        </div>
 
-        <IconButton onClick={onOpen} icon={<FolderOpen size={15} />} title="Open (Ctrl+O)" />
-        <IconButton onClick={onSave} icon={<Save size={15} />} title="Save (Ctrl+S)" />
-        <IconButton onClick={onExport} icon={<Download size={15} />} title="Export" />
-        <IconButton onClick={onOpenSettings} icon={<Settings size={15} />} title="Settings" />
-      </div>
+      {/* Open Button */}
+      <button 
+        onClick={onOpen}
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center"
+        title="Open File (Ctrl+O)"
+      >
+        <FolderOpen size={16} />
+      </button>
+
+      {/* Save Button */}
+      <button 
+        onClick={onSave}
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
+        title="Save As (Ctrl+S)"
+      >
+        <Save size={16} />
+      </button>
+
+      {/* Export Button */}
+      <button 
+        onClick={onExport}
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
+        title="Export File"
+      >
+        <Download size={16} />
+      </button>
+
+      {/* Settings Button */}
+      <button 
+        onClick={onOpenSettings}
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
+        title="Settings"
+      >
+        <Settings size={16} />
+      </button>
     </div>
   );
 };
-
-const IconButton = ({ onClick, disabled, icon, title }: any) => (
-    <button 
-        onClick={onClick}
-        disabled={disabled}
-        className={`
-            p-1.5 rounded-md transition-all
-            ${disabled 
-                ? 'text-muted/20 cursor-not-allowed' 
-                : 'text-muted hover:text-text hover:bg-surface'}
-        `}
-        title={title}
-    >
-        {icon}
-    </button>
-);

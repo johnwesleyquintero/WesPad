@@ -8,62 +8,60 @@ const getInitialTabs = (): Tab[] => {
     try {
       const parsed = JSON.parse(savedTabs);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((t: any) => {
-          // Migration: Convert old string[] history to object history
-          const rawHistory = Array.isArray(t.history) ? t.history : [t.content];
-          const history = rawHistory.map((h: any) => 
-            typeof h === 'string' 
-              ? { content: h, selection: { start: 0, end: 0 } } 
-              : h
-          );
-
-          return {
+        return parsed.map((t: any) => ({
            ...t,
-           history,
-           historyIndex: t.historyIndex ?? (history.length - 1),
-           selection: t.selection || { start: 0, end: 0 }
-        };
-      });
+           history: [t.content],
+           historyIndex: 0
+        }));
       }
     } catch (e) {
       console.error("Failed to load tabs", e);
     }
   }
-  return [{ 
-    ...DEFAULT_TAB, 
-    history: [{ content: DEFAULT_TAB.content, selection: { start: 0, end: 0 } }] 
-  }];
+  return [DEFAULT_TAB];
 };
 
 export const useTabs = () => {
+  // 1. Lazy Initialization of State (Synchronous)
+  // This ensures that on first render, tabs and activeTabId are consistent.
   const [tabs, setTabs] = useState<Tab[]>(getInitialTabs);
   
   const [activeTabId, setActiveTabId] = useState<string>(() => {
     const savedActive = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB);
     const initialTabs = getInitialTabs();
+    
+    // Ensure the saved active ID actually exists in our tabs
     if (savedActive && initialTabs.some(t => t.id === savedActive)) {
       return savedActive;
     }
+    // Fallback to the first tab if saved ID is invalid/missing
     return initialTabs[0].id;
   });
 
   const [isSaved, setIsSaved] = useState(true);
+  
+  // History debounce ref
   const typingTimeoutRef = useRef<number | null>(null);
 
+  // 2. Persist to Storage on Change
   useEffect(() => {
-    // Save to local storage (omitting history content to save space if needed, but here we keep it)
-    // For a real production app, you might want to limit history depth stored in localStorage
-    localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(tabs));
+    // Strip history before saving to storage to save space
+    const tabsToSave = tabs.map(({ history, historyIndex, ...rest }) => rest);
+    localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(tabsToSave));
     localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, activeTabId);
     
+    // UI Feedback for saving
     const timer = setTimeout(() => setIsSaved(true), 1000);
     return () => clearTimeout(timer);
   }, [tabs, activeTabId]);
 
+  // Derived state
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
   const canUndo = (activeTab.historyIndex || 0) > 0;
   const canRedo = (activeTab.historyIndex || 0) < (activeTab.history?.length || 0) - 1;
 
+  // Actions
+  
   const createTab = useCallback((title: string, content: string) => {
     const newTab: Tab = {
         id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -71,9 +69,8 @@ export const useTabs = () => {
         content,
         lastModified: Date.now(),
         isCustomTitle: true,
-        history: [{ content, selection: { start: 0, end: 0 } }],
-        historyIndex: 0,
-        selection: { start: 0, end: 0 }
+        history: [content],
+        historyIndex: 0
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(newTab.id);
@@ -81,6 +78,7 @@ export const useTabs = () => {
 
   const closeTab = useCallback((id: string) => {
     setTabs(currentTabs => {
+        // If closing the last tab, just reset it instead of removing
         if (currentTabs.length === 1) {
             if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
             return currentTabs.map(t => ({
@@ -88,19 +86,23 @@ export const useTabs = () => {
                 title: 'Untitled',
                 isCustomTitle: false,
                 content: '',
-                history: [{ content: '', selection: { start: 0, end: 0 } }], 
+                history: [''], 
                 historyIndex: 0,
-                lastModified: Date.now(),
-                selection: { start: 0, end: 0 }
+                lastModified: Date.now()
             }));
         }
 
         const newTabs = currentTabs.filter(t => t.id !== id);
+        
+        // If we are closing the active tab, switch to a neighbor
         if (id === activeTabId) {
              const index = currentTabs.findIndex(t => t.id === id);
+             // Try to select the previous tab, or the next one (which slides into current index)
              const nextTab = newTabs[Math.max(0, index - 1)];
+             // Side effect: Update active ID
              setActiveTabId(nextTab.id);
         }
+        
         return newTabs;
     });
   }, [activeTabId]);
@@ -113,14 +115,19 @@ export const useTabs = () => {
     ));
   }, []);
 
-  const updateContent = useCallback((newContent: string, selection?: { start: number; end: number }) => {
+  const updateContent = useCallback((newContent: string) => {
     setIsSaved(false);
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
-    // 1. Immediate State Update (UI responsiveness)
+    // Clear pending debounce
+    if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Immediate UI Update
     setTabs(prev => prev.map(tab => {
       if (tab.id === activeTabId) {
         let newTitle = tab.title;
+        // Auto-title logic
         if (!tab.isCustomTitle) {
           const firstLine = newContent.split('\n')[0].trim();
           if (firstLine.startsWith('# ')) {
@@ -129,35 +136,23 @@ export const useTabs = () => {
               newTitle = 'Untitled';
           }
         }
-        return { 
-            ...tab, 
-            content: newContent, 
-            title: newTitle, 
-            lastModified: Date.now(),
-            selection: selection || tab.selection // Update selection if provided
-        };
+        return { ...tab, content: newContent, title: newTitle, lastModified: Date.now() };
       }
       return tab;
     }));
 
-    // 2. Debounced History Snapshot
+    // Debounced History Push
     typingTimeoutRef.current = window.setTimeout(() => {
         setTabs(prev => prev.map(tab => {
             if (tab.id === activeTabId) {
-                const history = tab.history || [{ content: tab.content, selection: { start: 0, end: 0 } }];
+                const history = tab.history || [tab.content];
                 const currentIndex = tab.historyIndex ?? 0;
                 const currentHistoryItem = history[currentIndex];
 
-                // Avoid duplicate history entries
-                if (currentHistoryItem.content === newContent) return tab;
+                if (currentHistoryItem === newContent) return tab;
 
                 const newHistory = history.slice(0, currentIndex + 1);
-                
-                // Push current state (including the selection we just updated in step 1)
-                newHistory.push({ 
-                    content: newContent, 
-                    selection: tab.selection || { start: 0, end: 0 } 
-                });
+                newHistory.push(newContent);
                 
                 if (newHistory.length > 50) newHistory.shift();
 
@@ -182,13 +177,11 @@ export const useTabs = () => {
     setTabs(prev => prev.map(tab => {
         if (tab.id === activeTabId) {
             const index = tab.historyIndex ?? 0;
-            const history = tab.history || [{ content: tab.content, selection: { start: 0, end: 0 } }];
+            const history = tab.history || [tab.content];
             if (index > 0) {
-                const prevItem = history[index - 1];
                 return {
                     ...tab,
-                    content: prevItem.content,
-                    selection: prevItem.selection,
+                    content: history[index - 1],
                     historyIndex: index - 1,
                     lastModified: Date.now()
                 };
@@ -205,13 +198,11 @@ export const useTabs = () => {
     setTabs(prev => prev.map(tab => {
         if (tab.id === activeTabId) {
             const index = tab.historyIndex ?? 0;
-            const history = tab.history || [{ content: tab.content, selection: { start: 0, end: 0 } }];
+            const history = tab.history || [tab.content];
             if (index < history.length - 1) {
-                const nextItem = history[index + 1];
                 return {
                     ...tab,
-                    content: nextItem.content,
-                    selection: nextItem.selection,
+                    content: history[index + 1],
                     historyIndex: index + 1,
                     lastModified: Date.now()
                 };

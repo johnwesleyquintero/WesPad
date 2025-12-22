@@ -1,12 +1,12 @@
-import React, { useEffect, useLayoutEffect, useState, useRef, memo } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { CursorPosition } from '../types';
 import * as TextUtils from '../utils/textManipulation';
-import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2, Link as LinkIcon, CheckSquare } from 'lucide-react';
+import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2, Link as LinkIcon, Strikethrough, CheckSquare } from 'lucide-react';
 import { rewriteText } from '../services/geminiService';
 
 interface EditorProps {
   content: string;
-  onChange: (value: string, selection?: { start: number; end: number }) => void;
+  onChange: (value: string) => void;
   onCursorChange: (pos: CursorPosition) => void;
   onSelectionStatsChange?: (stats: { wordCount: number; charCount: number }) => void;
   editorRef: React.RefObject<HTMLTextAreaElement>;
@@ -16,7 +16,7 @@ interface EditorProps {
     wordWrap: boolean;
   };
   initialScrollTop?: number;
-  selection?: { start: number; end: number };
+  initialSelection?: { start: number; end: number };
   onSaveState: (state: { scrollTop: number; selection: { start: number; end: number } }) => void;
   isZenMode: boolean;
   onScroll?: (e: React.UIEvent<HTMLTextAreaElement>) => void;
@@ -24,7 +24,7 @@ interface EditorProps {
   onError: (message: string) => void;
 }
 
-const EditorComponent: React.FC<EditorProps> = ({ 
+export const Editor: React.FC<EditorProps> = ({ 
   content, 
   onChange, 
   onCursorChange,
@@ -32,7 +32,7 @@ const EditorComponent: React.FC<EditorProps> = ({
   editorRef,
   settings,
   initialScrollTop,
-  selection, // This is the selection from the Tab state (Undo/Redo source)
+  initialSelection,
   onSaveState,
   isZenMode,
   onScroll,
@@ -40,38 +40,18 @@ const EditorComponent: React.FC<EditorProps> = ({
   onError
 }) => {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
-  const prevSelectionRef = useRef(selection);
 
-  // Restore scroll on mount
+  // Restore state on mount (which happens on tab switch due to key prop)
   useLayoutEffect(() => {
     if (editorRef.current) {
         if (typeof initialScrollTop === 'number') {
             editorRef.current.scrollTop = initialScrollTop;
         }
-        // Initial selection set on mount
-        if (selection) {
-            editorRef.current.setSelectionRange(selection.start, selection.end);
+        if (initialSelection) {
+            editorRef.current.setSelectionRange(initialSelection.start, initialSelection.end);
         }
     }
   }, []);
-
-  // Watch for external selection changes (Undo/Redo)
-  useEffect(() => {
-    // Check if the selection prop has changed and differs from the ref
-    if (selection !== prevSelectionRef.current) {
-        if (editorRef.current && selection) {
-            // Only update if content length allows it
-            if (editorRef.current.value.length >= selection.end) {
-                editorRef.current.setSelectionRange(selection.start, selection.end);
-                // We might need to handleSelect here if we want status bar update, 
-                // but usually status bar updates on poll or event. 
-                // Let's force a stats update manually just in case.
-                handleSelect();
-            }
-        }
-        prevSelectionRef.current = selection;
-    }
-  }, [selection, content]);
 
   // Save state on unmount
   useEffect(() => {
@@ -92,13 +72,13 @@ const EditorComponent: React.FC<EditorProps> = ({
     if (editorRef.current) {
       const { value, selectionStart, selectionEnd } = editorRef.current;
       
-      // Cursor Position
+      // Cursor Position Logic
       const textUpToCursor = value.substring(0, selectionStart);
       const line = textUpToCursor.split('\n').length;
       const column = selectionStart - textUpToCursor.lastIndexOf('\n');
       onCursorChange({ line, column });
 
-      // Selection Stats
+      // Selection Stats Logic
       if (onSelectionStatsChange) {
         if (selectionStart !== selectionEnd) {
             const selectedText = value.substring(selectionStart, selectionEnd);
@@ -112,19 +92,12 @@ const EditorComponent: React.FC<EditorProps> = ({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // Pass current selection to parent so it can be saved in history
-    onChange(e.target.value, { 
-        start: e.target.selectionStart, 
-        end: e.target.selectionEnd 
-    });
+    onChange(e.target.value);
     handleSelect();
   };
 
   const applyMutation = (result: { newValue: string; newSelectionStart: number; newSelectionEnd: number }) => {
-    // Update content and explicitly set the new selection in state
-    onChange(result.newValue, { start: result.newSelectionStart, end: result.newSelectionEnd });
-    
-    // Also force DOM update immediately to prevent jumpiness
+    onChange(result.newValue);
     setTimeout(() => {
         if (editorRef.current) {
             editorRef.current.focus();
@@ -136,11 +109,13 @@ const EditorComponent: React.FC<EditorProps> = ({
 
   const handleFormat = (wrapper: string) => {
     if (!editorRef.current) return;
+    
     const state = {
         value: editorRef.current.value,
         selectionStart: editorRef.current.selectionStart,
         selectionEnd: editorRef.current.selectionEnd
     };
+
     const result = TextUtils.handleFormatWrapper(state, wrapper);
     applyMutation(result);
   };
@@ -169,6 +144,7 @@ const EditorComponent: React.FC<EditorProps> = ({
 
   const handleQuickAiRewrite = async () => {
     if (!editorRef.current) return;
+    
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
         onError("You are offline. AI features require an internet connection.");
         return;
@@ -188,14 +164,12 @@ const EditorComponent: React.FC<EditorProps> = ({
         const rewritten = await rewriteText(text, apiKey);
         if (rewritten) {
             const newValue = editorRef.current.value.substring(0, start) + rewritten + editorRef.current.value.substring(end);
-            const newEnd = start + rewritten.length;
-            
-            // Update state with new selection
-            onChange(newValue, { start, end: newEnd });
-            
+            onChange(newValue);
+            // Move selection to end of rewritten text
             setTimeout(() => {
                 if(editorRef.current) {
                     editorRef.current.focus();
+                    const newEnd = start + rewritten.length;
                     editorRef.current.setSelectionRange(start, newEnd);
                     handleSelect();
                 }
@@ -206,7 +180,7 @@ const EditorComponent: React.FC<EditorProps> = ({
         if (error.message && error.message.includes('API Key')) {
             onError("Missing API Key. Please configure it in Settings.");
         } else {
-            onError("Quick Polish failed. Check your API key.");
+            onError("Quick Polish failed. Please check your API key.");
         }
     } finally {
         setIsAiProcessing(false);
@@ -223,6 +197,7 @@ const EditorComponent: React.FC<EditorProps> = ({
         selectionEnd: editorRef.current.selectionEnd
     };
 
+    // 1. Tab Indentation
     if (e.key === 'Tab') {
       const result = TextUtils.handleTabIndentation(state);
       e.preventDefault();
@@ -230,10 +205,12 @@ const EditorComponent: React.FC<EditorProps> = ({
       return;
     }
 
+    // 2. Overtype closing pair
     if (!isMod) {
         const overtypeResult = TextUtils.handleOvertype(state, e.key);
         if (overtypeResult) {
             e.preventDefault();
+            // Just move cursor, no value change
             if (editorRef.current) {
                 editorRef.current.setSelectionRange(overtypeResult.newSelectionStart, overtypeResult.newSelectionEnd);
                 handleSelect();
@@ -242,6 +219,7 @@ const EditorComponent: React.FC<EditorProps> = ({
         }
     }
 
+    // 3. Auto-Close Pairs
     if (!isMod) {
         const autoCloseResult = TextUtils.handleAutoClose(state, e.key);
         if (autoCloseResult) {
@@ -251,6 +229,7 @@ const EditorComponent: React.FC<EditorProps> = ({
         }
     }
 
+    // 4. Smart Lists (Enter)
     if (e.key === 'Enter') {
         const listResult = TextUtils.handleSmartList(state);
         if (listResult) {
@@ -260,6 +239,7 @@ const EditorComponent: React.FC<EditorProps> = ({
         }
     }
 
+    // 5. Smart Backspace
     if (e.key === 'Backspace') {
          const bsResult = TextUtils.handleSmartBackspace(state);
          if (bsResult) {
@@ -269,9 +249,23 @@ const EditorComponent: React.FC<EditorProps> = ({
          }
     }
 
-    if (isMod && e.key.toLowerCase() === 'b') { e.preventDefault(); handleFormat('**'); }
-    if (isMod && e.key.toLowerCase() === 'i') { e.preventDefault(); handleFormat('*'); }
-    if (isMod && e.key.toLowerCase() === 'l') { e.preventDefault(); handleLink(); }
+    // Bold: Ctrl+B
+    if (isMod && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        handleFormat('**');
+    }
+
+    // Italic: Ctrl+I
+    if (isMod && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        handleFormat('*');
+    }
+
+    // Link: Ctrl+L
+    if (isMod && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        handleLink();
+    }
   };
 
   const getFontFamily = () => {
@@ -283,67 +277,55 @@ const EditorComponent: React.FC<EditorProps> = ({
   };
 
   return (
-    <div className={`w-full h-full flex flex-col items-center bg-background relative group ${isZenMode ? 'pt-0' : ''}`}>
+    <div className={`w-full h-full flex flex-col justify-start items-center bg-background overflow-hidden relative ${isZenMode ? 'pt-0' : ''}`}>
         
-        {/* Floating Toolbar - Visible when not in Zen */}
+        {/* Editor Toolbar - Only show if not in Zen Mode, or make it autohide? Keeping it persistent for now unless zen mode active. */}
         {!isZenMode && (
-            <div className={`
-                absolute top-6 left-1/2 -translate-x-1/2 z-20 
-                bg-surface/90 backdrop-blur-md border border-border/50 shadow-lg rounded-full 
-                py-1.5 px-3 transition-all duration-300 ease-in-out
-                opacity-100 translate-y-0
-            `}>
-                <div className="flex items-center space-x-1">
-                    <ToolbarBtn onClick={() => handleBlockFormat('# ')} icon={<Heading1 size={15} />} title="Heading 1" />
-                    <ToolbarBtn onClick={() => handleBlockFormat('## ')} icon={<Heading2 size={15} />} title="Heading 2" />
-                    <div className="w-px h-4 bg-border/50 mx-1" />
-                    <ToolbarBtn onClick={() => handleFormat('**')} icon={<Bold size={15} />} title="Bold (Ctrl+B)" />
-                    <ToolbarBtn onClick={() => handleFormat('*')} icon={<Italic size={15} />} title="Italic (Ctrl+I)" />
-                    <ToolbarBtn onClick={() => handleFormat('`')} icon={<Code size={15} />} title="Inline Code" />
-                    <div className="w-px h-4 bg-border/50 mx-1" />
-                    <ToolbarBtn onClick={handleLink} icon={<LinkIcon size={15} />} title="Link (Ctrl+L)" />
-                    <ToolbarBtn onClick={() => handleBlockFormat('> ')} icon={<Quote size={15} />} title="Blockquote" />
-                    <ToolbarBtn onClick={() => handleBlockFormat('- ')} icon={<List size={15} />} title="List" />
-                    <ToolbarBtn onClick={() => handleBlockFormat('- [ ] ')} icon={<CheckSquare size={15} />} title="Task" />
-                    <div className="w-px h-4 bg-border/50 mx-1" />
+            <div className="w-full flex items-center justify-center border-b border-border bg-background/95 backdrop-blur-sm z-10 transition-all select-none">
+                <div className="flex items-center space-x-1 py-1.5 px-2 overflow-x-auto no-scrollbar max-w-full">
+                    <ToolbarBtn onClick={() => handleBlockFormat('# ')} icon={<Heading1 size={14} />} title="Heading 1" />
+                    <ToolbarBtn onClick={() => handleBlockFormat('## ')} icon={<Heading2 size={14} />} title="Heading 2" />
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <ToolbarBtn onClick={() => handleFormat('**')} icon={<Bold size={14} />} title="Bold (Ctrl+B)" />
+                    <ToolbarBtn onClick={() => handleFormat('*')} icon={<Italic size={14} />} title="Italic (Ctrl+I)" />
+                    <ToolbarBtn onClick={() => handleFormat('~~')} icon={<Strikethrough size={14} />} title="Strikethrough" />
+                    <ToolbarBtn onClick={() => handleFormat('`')} icon={<Code size={14} />} title="Inline Code" />
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <ToolbarBtn onClick={handleLink} icon={<LinkIcon size={14} />} title="Link (Ctrl+L)" />
+                    <ToolbarBtn onClick={() => handleBlockFormat('> ')} icon={<Quote size={14} />} title="Blockquote" />
+                    <ToolbarBtn onClick={() => handleBlockFormat('- ')} icon={<List size={14} />} title="Bullet List" />
+                    <ToolbarBtn onClick={() => handleBlockFormat('- [ ] ')} icon={<CheckSquare size={14} />} title="Task List" />
+                    <div className="w-px h-4 bg-border mx-1" />
                     <button 
                         onClick={handleQuickAiRewrite}
                         disabled={isAiProcessing}
                         className={`
-                            flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all
+                            flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-all
                             ${isAiProcessing 
-                                ? 'bg-muted/20 text-muted cursor-wait' 
-                                : 'bg-gradient-to-r from-purple-500/10 to-blue-500/10 text-purple-600 dark:text-purple-400 hover:from-purple-500/20 hover:to-blue-500/20'}
+                                ? 'bg-surface text-muted cursor-wait' 
+                                : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'}
                         `}
                         title="AI Rewrite Selection"
                     >
-                        {isAiProcessing ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                        <span className="hidden sm:inline">Polish</span>
+                        {isAiProcessing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                        <span>{isAiProcessing ? 'Thinking...' : 'Quick Polish'}</span>
                     </button>
                 </div>
             </div>
         )}
 
-        {/* Editor Area */}
-        <div className="flex-1 w-full h-full relative overflow-hidden">
+        <div className={`flex-1 w-full flex justify-center overflow-hidden ${isZenMode ? 'items-start pt-10' : ''}`}>
              <textarea
                 ref={editorRef}
-                onScroll={(e) => {
-                    if (onScroll) onScroll(e);
-                }}
+                onScroll={onScroll}
                 className={`
-                    block w-full h-full bg-background text-text resize-none focus:outline-none 
-                    transition-colors duration-200 leading-relaxed selection:bg-selection/30
+                    h-full bg-background text-text p-4 pb-96 resize-none focus:outline-none 
+                    transition-all duration-300
                     ${getFontFamily()}
                     ${settings.wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'}
-                    ${isZenMode ? 'pt-16' : 'pt-24 pb-96'}
+                    ${isZenMode ? 'max-w-3xl w-full border-none' : 'w-full'}
                 `}
-                style={{ 
-                    fontSize: `${settings.fontSize}px`,
-                    lineHeight: '1.7',
-                    paddingLeft: `max(2rem, calc(50% - ${isZenMode ? '24rem' : '32rem'}))`,
-                    paddingRight: `max(2rem, calc(50% - ${isZenMode ? '24rem' : '32rem'}))`
-                }}
+                style={{ fontSize: `${settings.fontSize}px` }}
                 value={content}
                 onChange={handleChange}
                 onSelect={handleSelect}
@@ -360,11 +342,9 @@ const EditorComponent: React.FC<EditorProps> = ({
 const ToolbarBtn = ({ onClick, icon, title }: { onClick: () => void, icon: React.ReactNode, title: string }) => (
     <button 
         onClick={onClick}
-        className="p-1.5 text-muted hover:text-text hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all active:scale-95"
+        className="p-1.5 text-muted hover:text-text hover:bg-surface rounded transition-colors"
         title={title}
     >
         {icon}
     </button>
 );
-
-export const Editor = memo(EditorComponent);
