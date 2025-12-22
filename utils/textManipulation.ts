@@ -74,8 +74,9 @@ export const handleSmartList = (state: TextState): MutationResult | null => {
   const currentLineStart = lastNewLinePos + 1;
   const currentLine = value.substring(currentLineStart, selectionStart);
   
-  // Regex for unordered (- or *) or ordered (1.) lists
-  const match = currentLine.match(/^(\s*)([-*]|\d+\.)(\s+)/);
+  // Regex for unordered, ordered lists, or task lists
+  // Capture groups: 1=indent, 2=bullet/number/task, 3=whitespace
+  const match = currentLine.match(/^(\s*)([-*]|\d+\.|[-*]\s\[[ x]\])(\s+)/);
   
   if (!match) return null;
 
@@ -95,9 +96,15 @@ export const handleSmartList = (state: TextState): MutationResult | null => {
 
   // Calculate next bullet
   let nextBullet = match[2];
-  if (match[2].match(/\d+\./)) {
+  
+  // Handle Ordered List increment
+  if (match[2].match(/^\d+\.$/)) {
     const num = parseInt(match[2]);
     nextBullet = `${num + 1}.`;
+  }
+  // Handle Task List (Always empty box next)
+  else if (match[2].match(/[-*]\s\[[ x]\]/)) {
+    nextBullet = `- [ ]`;
   }
 
   const insertion = `\n${match[1]}${nextBullet}${match[3]}`;
@@ -170,6 +177,34 @@ export const handleFormatWrapper = (state: TextState, wrapper: string): Mutation
   };
 };
 
+export const handleLink = (state: TextState): MutationResult => {
+  const { value, selectionStart, selectionEnd } = state;
+  const selectedText = value.substring(selectionStart, selectionEnd);
+  
+  // If no text selected, insert empty link []()
+  if (!selectedText) {
+    const newValue = value.substring(0, selectionStart) + '[]()' + value.substring(selectionEnd);
+    return {
+      newValue,
+      newSelectionStart: selectionStart + 1, // Inside brackets
+      newSelectionEnd: selectionStart + 1,
+      shouldPreventDefault: true
+    };
+  }
+
+  // If text is selected, wrap it in brackets and add parens: [text]()
+  const newValue = value.substring(0, selectionStart) + `[${selectedText}]()` + value.substring(selectionEnd);
+  // Place cursor inside the parentheses
+  const cursorPosition = selectionStart + selectedText.length + 3; // [ + text + ] + ( = +3
+  
+  return {
+    newValue,
+    newSelectionStart: cursorPosition,
+    newSelectionEnd: cursorPosition,
+    shouldPreventDefault: true
+  };
+};
+
 export const toggleLinePrefix = (state: TextState, prefix: string): MutationResult => {
   const { value, selectionStart, selectionEnd } = state;
   
@@ -181,16 +216,25 @@ export const toggleLinePrefix = (state: TextState, prefix: string): MutationResu
   const content = value.substring(firstLineStart, lastLineEnd);
   const lines = content.split('\n');
 
-  // Check if all lines already start with prefix (normalized)
-  const isAllPrefixed = lines.every(line => line.startsWith(prefix));
+  // Regex to detect existing prefixes: Headers (#), Bullets (- or *), Numbers (1.), Blockquotes (>), Task Lists (- [ ])
+  const prefixRegex = /^(\s*)(#+\s|[-*]\s|\d+\.\s|>\s|[-*]\s\[[ x]\]\s)/;
+
+  // Check if all lines already start with the *target* prefix
+  const isAllTargetPrefixed = lines.every(line => line.startsWith(prefix));
 
   const newLines = lines.map(line => {
-    if (isAllPrefixed) {
-      return line.startsWith(prefix) ? line.substring(prefix.length) : line;
+    if (isAllTargetPrefixed) {
+      // Remove the prefix
+      return line.substring(prefix.length);
     } else {
-      // Remove any existing heading/list prefix if we are applying a new one, to avoid "## # Title"
-      // Simple logic: If applying H1 (#), and it has H2 (##), strip H2 first.
-      return prefix + line;
+      // Apply new prefix, replacing ANY existing prefix
+      const match = line.match(prefixRegex);
+      if (match) {
+        // match[0] is the full prefix including whitespace like "# " or "- "
+        return prefix + line.substring(match[0].length);
+      } else {
+        return prefix + line;
+      }
     }
   });
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { CursorPosition } from '../types';
 import * as TextUtils from '../utils/textManipulation';
-import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2 } from 'lucide-react';
+import { Bold, Italic, Code, Heading1, Heading2, List, Quote, Sparkles, Loader2, Link as LinkIcon, Strikethrough, CheckSquare } from 'lucide-react';
 import { rewriteText } from '../services/geminiService';
 
 interface EditorProps {
@@ -113,6 +113,17 @@ export const Editor: React.FC<EditorProps> = ({
     };
 
     const result = TextUtils.handleFormatWrapper(state, wrapper);
+    applyMutation(result);
+  };
+
+  const handleLink = () => {
+    if (!editorRef.current) return;
+    const state = {
+        value: editorRef.current.value,
+        selectionStart: editorRef.current.selectionStart,
+        selectionEnd: editorRef.current.selectionEnd
+    };
+    const result = TextUtils.handleLink(state);
     applyMutation(result);
   };
 
@@ -232,6 +243,12 @@ export const Editor: React.FC<EditorProps> = ({
         e.preventDefault();
         handleFormat('*');
     }
+
+    // Link: Ctrl+L
+    if (isMod && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        handleLink();
+    }
   };
 
   const getFontFamily = () => {
@@ -254,10 +271,13 @@ export const Editor: React.FC<EditorProps> = ({
                     <div className="w-px h-4 bg-border mx-1" />
                     <ToolbarBtn onClick={() => handleFormat('**')} icon={<Bold size={14} />} title="Bold (Ctrl+B)" />
                     <ToolbarBtn onClick={() => handleFormat('*')} icon={<Italic size={14} />} title="Italic (Ctrl+I)" />
+                    <ToolbarBtn onClick={() => handleFormat('~~')} icon={<Strikethrough size={14} />} title="Strikethrough" />
                     <ToolbarBtn onClick={() => handleFormat('`')} icon={<Code size={14} />} title="Inline Code" />
                     <div className="w-px h-4 bg-border mx-1" />
+                    <ToolbarBtn onClick={handleLink} icon={<LinkIcon size={14} />} title="Link (Ctrl+L)" />
                     <ToolbarBtn onClick={() => handleBlockFormat('> ')} icon={<Quote size={14} />} title="Blockquote" />
                     <ToolbarBtn onClick={() => handleBlockFormat('- ')} icon={<List size={14} />} title="Bullet List" />
+                    <ToolbarBtn onClick={() => handleBlockFormat('- [ ] ')} icon={<CheckSquare size={14} />} title="Task List" />
                     <div className="w-px h-4 bg-border mx-1" />
                     <button 
                         onClick={handleQuickAiRewrite}

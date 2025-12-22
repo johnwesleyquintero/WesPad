@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings, Loader2, ArrowRight } from 'lucide-react';
+import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings, Loader2, ArrowRight, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useAI } from '../hooks/useAI';
@@ -28,7 +29,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   apiKey,
   onOpenSettings
 }) => {
-  const { messages, isLoading, sendMessage, clearChat, hasKey } = useAI(apiKey);
+  const { messages, isLoading, sendMessage, clearChat, stopGeneration, hasKey } = useAI(apiKey);
   const [inputValue, setInputValue] = useState('');
   const [activeTone, setActiveTone] = useState<ToneType>('Professional');
   
@@ -125,6 +126,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                 {msg.role === 'model' ? (
                      <div className="prose prose-neutral dark:prose-invert prose-xs max-w-none leading-relaxed">
                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
                             components={{
                               code(props) {
                                 const {children, className, node, ...rest} = props;
@@ -270,13 +272,24 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             disabled={isLoading || (typeof navigator !== 'undefined' && !navigator.onLine)}
             className="flex-1 bg-surface border border-border rounded-lg pl-3 pr-10 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-text/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all placeholder:text-muted/70"
           />
-          <button
-            onClick={() => onSend(inputValue, selectedText || contextText)}
-            disabled={!inputValue.trim() || isLoading || (typeof navigator !== 'undefined' && !navigator.onLine)}
-            className="absolute right-1.5 bottom-1.5 p-1.5 bg-text text-background rounded-md hover:opacity-90 disabled:opacity-0 disabled:cursor-not-allowed transition-all"
-          >
-            <Send size={14} />
-          </button>
+          
+          {isLoading ? (
+            <button
+                onClick={stopGeneration}
+                className="absolute right-1.5 bottom-1.5 p-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all animate-in zoom-in duration-200"
+                title="Stop Generation"
+            >
+                <Square size={14} fill="currentColor" />
+            </button>
+          ) : (
+            <button
+                onClick={() => onSend(inputValue, selectedText || contextText)}
+                disabled={!inputValue.trim() || (typeof navigator !== 'undefined' && !navigator.onLine)}
+                className="absolute right-1.5 bottom-1.5 p-1.5 bg-text text-background rounded-md hover:opacity-90 disabled:opacity-0 disabled:cursor-not-allowed transition-all"
+            >
+                <Send size={14} />
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Chat, GenerateContentResponse } from '@google/genai';
 import * as geminiService from '../services/geminiService';
 
@@ -17,6 +17,9 @@ export const useAI = (apiKey: string) => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [chatSession, setChatSession] = useState<Chat | null>(null);
+  
+  // Abort Control
+  const abortRef = useRef<boolean>(false);
 
   // Initialize Chat Session
   useEffect(() => {
@@ -57,6 +60,12 @@ export const useAI = (apiKey: string) => {
     }
   };
 
+  const stopGeneration = () => {
+    if (isLoading) {
+        abortRef.current = true;
+    }
+  };
+
   const sendMessage = async (text: string, context?: string, tone?: string) => {
     if (!text.trim()) return;
     
@@ -86,6 +95,7 @@ export const useAI = (apiKey: string) => {
     }
 
     setIsLoading(true);
+    abortRef.current = false; // Reset abort flag
     setMessages(prev => [...prev, userMsg]);
 
     // Construct Prompt
@@ -113,6 +123,11 @@ export const useAI = (apiKey: string) => {
         let accumulatedText = '';
 
         for await (const chunk of responseStream) {
+            if (abortRef.current) {
+                // User clicked stop
+                break;
+            }
+
             const c = chunk as GenerateContentResponse;
             const newText = c.text || '';
             accumulatedText += newText;
@@ -127,7 +142,7 @@ export const useAI = (apiKey: string) => {
         // Finalize
         setMessages(prev => prev.map(msg => 
             msg.id === responseId 
-                ? { ...msg, isStreaming: false } 
+                ? { ...msg, isStreaming: false, text: accumulatedText + (abortRef.current ? ' [Stopped]' : '') } 
                 : msg
         ));
 
@@ -154,6 +169,7 @@ export const useAI = (apiKey: string) => {
         }]);
     } finally {
         setIsLoading(false);
+        abortRef.current = false;
     }
   };
 
@@ -162,6 +178,7 @@ export const useAI = (apiKey: string) => {
     isLoading,
     sendMessage,
     clearChat,
+    stopGeneration,
     hasKey: !!chatSession
   };
 };
