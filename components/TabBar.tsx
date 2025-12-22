@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Tab } from '../types';
-import { Plus, X, FileText, Settings, Download, Save, FolderOpen } from 'lucide-react';
+import { Plus, X, FileText, Settings, Download, Save, FolderOpen, Undo2, Redo2 } from 'lucide-react';
 
 interface TabBarProps {
   tabs: Tab[];
@@ -13,6 +13,10 @@ interface TabBarProps {
   onExport: () => void;
   onSave: () => void;
   onOpen: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 export const TabBar: React.FC<TabBarProps> = ({ 
@@ -25,7 +29,11 @@ export const TabBar: React.FC<TabBarProps> = ({
   onOpenSettings,
   onExport,
   onSave,
-  onOpen
+  onOpen,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -119,10 +127,36 @@ export const TabBar: React.FC<TabBarProps> = ({
       {/* Spacer to fill rest of bar */}
       <div className="flex-1 bg-background h-full"></div>
       
+      {/* Undo/Redo Group */}
+      <div className="flex items-center border-l border-border h-full">
+        <button 
+          onClick={onUndo}
+          disabled={!canUndo}
+          className={`h-full px-3 flex items-center justify-center transition-colors
+            ${canUndo 
+              ? 'text-muted hover:text-text hover:bg-surface' 
+              : 'text-muted/30 cursor-not-allowed'}`}
+          title="Undo (Ctrl+Z)"
+        >
+          <Undo2 size={16} />
+        </button>
+        <button 
+          onClick={onRedo}
+          disabled={!canRedo}
+          className={`h-full px-3 flex items-center justify-center transition-colors border-r border-border
+            ${canRedo 
+              ? 'text-muted hover:text-text hover:bg-surface' 
+              : 'text-muted/30 cursor-not-allowed'}`}
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          <Redo2 size={16} />
+        </button>
+      </div>
+
       {/* Open Button */}
       <button 
         onClick={onOpen}
-        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
+        className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center"
         title="Open File (Ctrl+O)"
       >
         <FolderOpen size={16} />

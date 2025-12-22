@@ -32,6 +32,8 @@ A sovereign, local-first, AI-optional writing pad.
 Start typing...
 `,
   lastModified: Date.now(),
+  history: [],
+  historyIndex: 0
 };
 
 const DEFAULT_SETTINGS = {
@@ -59,6 +61,7 @@ const App: React.FC = () => {
   // --- Refs ---
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<number | null>(null);
 
   // --- Derived State ---
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
@@ -68,6 +71,9 @@ const App: React.FC = () => {
   const wordCount = words.length;
   // Avg reading speed ~225 wpm
   const readingTime = Math.ceil(wordCount / 225);
+
+  const canUndo = (activeTab.historyIndex || 0) > 0;
+  const canRedo = (activeTab.historyIndex || 0) < (activeTab.history?.length || 0) - 1;
 
   // --- Persistence Effects ---
   
@@ -83,7 +89,13 @@ const App: React.FC = () => {
       try {
         const parsed = JSON.parse(savedTabs);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setTabs(parsed);
+          // Hydrate tabs with empty history on load to prevent storage bloat
+          const hydratedTabs = parsed.map((t: any) => ({
+             ...t,
+             history: [t.content],
+             historyIndex: 0
+          }));
+          setTabs(hydratedTabs);
         }
       } catch (e) {
         console.error("Failed to load tabs", e);
@@ -122,9 +134,11 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY_THEME, theme);
   }, [theme]);
 
-  // Save tabs on change
+  // Save tabs on change (Exclude history from storage)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_TABS, JSON.stringify(tabs));
+    // Strip history before saving to local storage
+    const tabsToSave = tabs.map(({ history, historyIndex, ...rest }) => rest);
+    localStorage.setItem(STORAGE_KEY_TABS, JSON.stringify(tabsToSave));
     localStorage.setItem(STORAGE_KEY_ACTIVE, activeTabId);
     
     const timer = setTimeout(() => setIsSaved(true), 1000);
@@ -157,8 +171,67 @@ const App: React.FC = () => {
     }));
   };
 
+  // Handles Undo logic
+  const handleUndo = () => {
+    if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+    }
+
+    setTabs(prev => prev.map(tab => {
+        if (tab.id === activeTabId) {
+            const index = tab.historyIndex ?? 0;
+            const history = tab.history || [tab.content];
+            if (index > 0) {
+                const newIndex = index - 1;
+                return {
+                    ...tab,
+                    content: history[newIndex],
+                    historyIndex: newIndex,
+                    lastModified: Date.now()
+                };
+            }
+        }
+        return tab;
+    }));
+    setIsSaved(false);
+  };
+
+  // Handles Redo logic
+  const handleRedo = () => {
+    if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+    }
+
+    setTabs(prev => prev.map(tab => {
+        if (tab.id === activeTabId) {
+            const index = tab.historyIndex ?? 0;
+            const history = tab.history || [tab.content];
+            if (index < history.length - 1) {
+                const newIndex = index + 1;
+                return {
+                    ...tab,
+                    content: history[newIndex],
+                    historyIndex: newIndex,
+                    lastModified: Date.now()
+                };
+            }
+        }
+        return tab;
+    }));
+    setIsSaved(false);
+  };
+
   const handleUpdateContent = (newContent: string) => {
     setIsSaved(false);
+
+    // 1. Clear any pending history commit
+    if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+    }
+
+    // 2. Immediate State Update (UI Responsiveness)
     setTabs(prev => prev.map(tab => {
       if (tab.id === activeTabId) {
         let newTitle = tab.title;
@@ -177,6 +250,37 @@ const App: React.FC = () => {
       }
       return tab;
     }));
+
+    // 3. Debounced History Commit
+    typingTimeoutRef.current = window.setTimeout(() => {
+        setTabs(prev => prev.map(tab => {
+            if (tab.id === activeTabId) {
+                const history = tab.history || [tab.content]; // Current active content is already updated in step 2, but 'tab' here is from 'prev' state which might be slightly stale if batching, but functionally mostly correct for debounce.
+                // Actually we should rely on the `newContent` passed to the handler closure
+                
+                const currentIndex = tab.historyIndex ?? 0;
+                const currentHistoryItem = history[currentIndex];
+
+                // Don't push if identical (avoids duplicates)
+                if (currentHistoryItem === newContent) return tab;
+
+                const newHistory = history.slice(0, currentIndex + 1);
+                newHistory.push(newContent);
+                
+                // Limit history size to 50
+                if (newHistory.length > 50) {
+                    newHistory.shift();
+                }
+
+                return {
+                    ...tab,
+                    history: newHistory,
+                    historyIndex: newHistory.length - 1
+                };
+            }
+            return tab;
+        }));
+    }, 700);
   };
 
   const handleNewTab = () => {
@@ -184,7 +288,9 @@ const App: React.FC = () => {
       id: `tab-${Date.now()}`,
       title: 'Untitled',
       content: '',
-      lastModified: Date.now()
+      lastModified: Date.now(),
+      history: [''],
+      historyIndex: 0
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(newTab.id);
@@ -195,6 +301,8 @@ const App: React.FC = () => {
     e.stopPropagation(); 
     if (tabs.length === 1) {
       handleUpdateContent('');
+      // Reset history for the single remaining tab
+      setTabs(prev => prev.map(t => ({...t, history: [''], historyIndex: 0})));
       return;
     }
 
@@ -287,7 +395,9 @@ const App: React.FC = () => {
                 title: file.name,
                 content: text,
                 lastModified: Date.now(),
-                isCustomTitle: true
+                isCustomTitle: true,
+                history: [text],
+                historyIndex: 0
             };
             setTabs(prev => [...prev, newTab]);
             setActiveTabId(newTab.id);
@@ -317,7 +427,9 @@ const App: React.FC = () => {
             title: file.name,
             content: text,
             lastModified: Date.now(),
-            isCustomTitle: true
+            isCustomTitle: true,
+            history: [text],
+            historyIndex: 0
         };
         setTabs(prev => [...prev, newTab]);
         setActiveTabId(newTab.id);
@@ -398,6 +510,23 @@ const App: React.FC = () => {
           e.preventDefault();
           setIsCommandPaletteOpen(true);
           return;
+      }
+
+      // Undo: Ctrl+Z
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Redo: Ctrl+Y or Ctrl+Shift+Z
+      if (
+          ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || 
+          ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
+      ) {
+        e.preventDefault();
+        handleRedo();
+        return;
       }
       
       // Ctrl+N for New Tab
@@ -503,6 +632,10 @@ const App: React.FC = () => {
             onExport={handleExport}
             onSave={handleSaveAs}
             onOpen={handleOpenFile}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={canUndo}
+            canRedo={canRedo}
           />
         </div>
       )}

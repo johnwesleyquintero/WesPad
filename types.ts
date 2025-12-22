@@ -4,6 +4,8 @@ export interface Tab {
   content: string;
   lastModified: number;
   isCustomTitle?: boolean;
+  history?: string[];
+  historyIndex?: number;
 }
 
 export interface CursorPosition {
