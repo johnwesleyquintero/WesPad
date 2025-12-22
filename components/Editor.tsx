@@ -118,7 +118,22 @@ export const Editor: React.FC<EditorProps> = ({
       return;
     }
 
-    // 2. Auto-Close Pairs
+    // 2. Skip over closing pair if typed (Overtype)
+    if (!isMod && Object.values(AUTO_CLOSE_PAIRS).includes(e.key)) {
+        if (!editorRef.current) return;
+        const start = editorRef.current.selectionStart;
+        const value = editorRef.current.value;
+        // If the character to the right is the one we are typing, just move cursor
+        if (value[start] === e.key) {
+             e.preventDefault();
+             editorRef.current.selectionStart = start + 1;
+             editorRef.current.selectionEnd = start + 1;
+             handleSelect();
+             return;
+        }
+    }
+
+    // 3. Auto-Close Pairs
     if (!isMod && AUTO_CLOSE_PAIRS[e.key]) {
         e.preventDefault();
         if (!editorRef.current) return;
@@ -129,41 +144,31 @@ export const Editor: React.FC<EditorProps> = ({
         const char = e.key;
         const closeChar = AUTO_CLOSE_PAIRS[char];
 
-        // Wrap selection if exists
+        // Wrap selection if text is selected
         if (start !== end) {
             const selected = value.substring(start, end);
             const newValue = value.substring(0, start) + char + selected + closeChar + value.substring(end);
             onChange(newValue);
             setTimeout(() => {
                 if (editorRef.current) {
+                   // Select the text inside the pair
                    editorRef.current.selectionStart = start + 1;
                    editorRef.current.selectionEnd = end + 1; 
+                   handleSelect();
                 }
             }, 0);
         } else {
-            // Insert pair
+            // Insert pair and place cursor in middle
             const newValue = value.substring(0, start) + char + closeChar + value.substring(end);
             onChange(newValue);
             setTimeout(() => {
                 if (editorRef.current) {
                     editorRef.current.selectionStart = editorRef.current.selectionEnd = start + 1;
+                    handleSelect();
                 }
             }, 0);
         }
         return;
-    }
-
-    // 3. Skip over closing pair if typed
-    if (!isMod && Object.values(AUTO_CLOSE_PAIRS).includes(e.key)) {
-        if (!editorRef.current) return;
-        const start = editorRef.current.selectionStart;
-        const value = editorRef.current.value;
-        if (value[start] === e.key) {
-             e.preventDefault();
-             editorRef.current.selectionStart = start + 1;
-             editorRef.current.selectionEnd = start + 1;
-             return;
-        }
     }
 
     // 4. Smart Lists (Enter)
@@ -172,21 +177,28 @@ export const Editor: React.FC<EditorProps> = ({
         const start = editorRef.current.selectionStart;
         const value = editorRef.current.value;
         
-        const lines = value.substring(0, start).split('\n');
-        const currentLine = lines[lines.length - 1];
+        // Find the current line text
+        const lastNewLinePos = value.lastIndexOf('\n', start - 1);
+        const currentLineStart = lastNewLinePos + 1;
+        const currentLine = value.substring(currentLineStart, start);
         
-        // Regex for unordered (- or *) or ordered (1.)
+        // Regex for unordered (- or *) or ordered (1.) lists
+        // Matches "  - " or "1. " at start of line
         const match = currentLine.match(/^(\s*)([-*]|\d+\.)(\s+)/);
         
         if (match) {
             // Check if user is breaking out of list (empty list item)
             // match[0] is the whole prefix "  - "
-            if (currentLine.trim() === match[2]) { 
+            // If the line consists ONLY of the bullet/number and whitespace, clear it
+            const lineContent = currentLine.substring(match[0].length).trim();
+            
+            if (lineContent === '') { 
                  e.preventDefault();
                  // Remove the current line content (the bullet)
-                 const lineStartPos = value.lastIndexOf('\n', start - 1) + 1;
-                 const newValue = value.substring(0, lineStartPos) + '\n' + value.substring(start);
+                 const newValue = value.substring(0, currentLineStart) + '\n' + value.substring(start);
                  onChange(newValue);
+                 // Cursor will be naturally at correct pos (start of new empty line)
+                 // but we need to account for the deletion of the bullet chars
                  return;
             }
 
@@ -210,6 +222,33 @@ export const Editor: React.FC<EditorProps> = ({
             }, 0);
             return;
         }
+    }
+
+    // 5. Smart Backspace (Optional: Delete pair if empty)
+    if (e.key === 'Backspace') {
+         if (!editorRef.current) return;
+         const start = editorRef.current.selectionStart;
+         const end = editorRef.current.selectionEnd;
+         const value = editorRef.current.value;
+         
+         if (start === end && start > 0) {
+             const charToDelete = value[start - 1];
+             const nextChar = value[start];
+             
+             // If we are deleting an opening char, and the next char is the matching closing char
+             if (AUTO_CLOSE_PAIRS[charToDelete] === nextChar) {
+                 e.preventDefault();
+                 const newValue = value.substring(0, start - 1) + value.substring(start + 1);
+                 onChange(newValue);
+                 setTimeout(() => {
+                     if (editorRef.current) {
+                         editorRef.current.selectionStart = editorRef.current.selectionEnd = start - 1;
+                         handleSelect();
+                     }
+                 }, 0);
+                 return;
+             }
+         }
     }
 
     // Bold: Ctrl+B

@@ -8,7 +8,7 @@ import { AIPanel } from './components/AIPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { FindReplaceBar } from './components/FindReplaceBar';
 import { CommandPalette } from './components/CommandPalette';
-import { Sparkles, Minimize2 } from 'lucide-react';
+import { Sparkles, Minimize2, UploadCloud } from 'lucide-react';
 
 const STORAGE_KEY_TABS = 'wespad_tabs';
 const STORAGE_KEY_ACTIVE = 'wespad_active_tab';
@@ -436,19 +436,23 @@ const App: React.FC = () => {
     e.target.value = '';
   };
 
+  // --- Drag & Drop Handlers ---
   const handleDragOver = (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (!isDragging) setIsDragging(true);
+      // Check if we are dragging a file
+      if (e.dataTransfer.types.includes('Files')) {
+          if (!isDragging) setIsDragging(true);
+      }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      // Only set false if leaving the main window (optional polish, keep simple for now)
-      if (e.relatedTarget === null) {
-          setIsDragging(false);
-      }
+      // Ensure we only disable dragging if we leave the window entirely
+      // or if we hit the overlay itself specifically (depends on structure)
+      if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+      setIsDragging(false);
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -457,9 +461,16 @@ const App: React.FC = () => {
       setIsDragging(false);
       
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-          for (const file of Array.from(e.dataTransfer.files)) {
-               const text = await file.text();
-               createTab(file.name, text);
+          const files = Array.from(e.dataTransfer.files);
+          
+          for (const file of files) {
+               // Only try to read text files
+               try {
+                  const text = await file.text();
+                  createTab(file.name, text);
+               } catch (err) {
+                   console.error("Could not read file", file.name, err);
+               }
           }
       }
   };
@@ -651,8 +662,10 @@ const App: React.FC = () => {
       
       {/* Drag Overlay */}
       {isDragging && (
-          <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm border-4 border-dashed border-text/20 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 z-[100] bg-background/80 backdrop-blur-sm border-4 border-dashed border-text/20 flex flex-col items-center justify-center pointer-events-none transition-opacity">
+              <UploadCloud size={64} className="text-text mb-4 opacity-50" />
               <div className="text-2xl font-bold text-text">Drop files to open</div>
+              <div className="text-muted mt-2">Markdown, Text, Code</div>
           </div>
       )}
 
