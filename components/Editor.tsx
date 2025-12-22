@@ -5,6 +5,7 @@ interface EditorProps {
   content: string;
   onChange: (value: string) => void;
   onCursorChange: (pos: CursorPosition) => void;
+  onSelectionStatsChange?: (stats: { wordCount: number; charCount: number }) => void;
   editorRef: React.RefObject<HTMLTextAreaElement>;
   settings: {
     fontSize: number;
@@ -28,6 +29,7 @@ export const Editor: React.FC<EditorProps> = ({
   content, 
   onChange, 
   onCursorChange,
+  onSelectionStatsChange,
   editorRef,
   settings,
   initialScrollTop,
@@ -64,11 +66,24 @@ export const Editor: React.FC<EditorProps> = ({
 
   const handleSelect = () => {
     if (editorRef.current) {
-      const { value, selectionStart } = editorRef.current;
+      const { value, selectionStart, selectionEnd } = editorRef.current;
+      
+      // Cursor Position Logic
       const textUpToCursor = value.substring(0, selectionStart);
       const line = textUpToCursor.split('\n').length;
       const column = selectionStart - textUpToCursor.lastIndexOf('\n');
       onCursorChange({ line, column });
+
+      // Selection Stats Logic
+      if (onSelectionStatsChange) {
+        if (selectionStart !== selectionEnd) {
+            const selectedText = value.substring(selectionStart, selectionEnd);
+            const words = selectedText.trim().split(/\s+/).filter(w => w.length > 0).length;
+            onSelectionStatsChange({ wordCount: words, charCount: selectedText.length });
+        } else {
+            onSelectionStatsChange({ wordCount: 0, charCount: 0 });
+        }
+      }
     }
   };
 

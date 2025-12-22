@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings, Loader2 } from 'lucide-react';
+import { Sparkles, X, Send, Check, AlertCircle, Copy, RotateCcw, Quote, Trash2, Settings, Loader2, ArrowRight } from 'lucide-react';
 import { Chat, GenerateContentResponse } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import * as geminiService from '../services/geminiService';
@@ -8,6 +8,7 @@ interface AIPanelProps {
   isOpen: boolean;
   onClose: () => void;
   selectedText: string;
+  contextText: string; // Fallback context if no selection (e.g. last 2000 chars)
   onReplaceText: (newText: string) => void;
   onAppendText: (newText: string) => void;
   apiKey: string;
@@ -27,13 +28,14 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   isOpen, 
   onClose, 
   selectedText, 
+  contextText,
   onReplaceText,
   onAppendText,
   apiKey,
   onOpenSettings
 }) => {
   const [messages, setMessages] = useState<Message[]>([
-    { id: 'welcome', role: 'model', text: "Hi! I'm your writing assistant. Select text to rewrite/summarize, or just ask me anything." }
+    { id: 'welcome', role: 'model', text: "Hi! I'm your writing assistant. Select text to rewrite, or click 'Continue' to keep writing." }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -285,13 +287,15 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                         <Copy size={12} />
                      </button>
                      <div className="w-px h-3 bg-border mx-1"></div>
-                     <button 
-                        onClick={() => onReplaceText(msg.text)}
-                        className="flex items-center px-1.5 py-0.5 text-[10px] text-muted hover:text-text rounded hover:bg-surface transition-colors"
-                        title="Replace Selection"
-                     >
-                        <RotateCcw size={10} className="mr-1" /> Replace
-                     </button>
+                     {selectedText && (
+                        <button 
+                            onClick={() => onReplaceText(msg.text)}
+                            className="flex items-center px-1.5 py-0.5 text-[10px] text-muted hover:text-text rounded hover:bg-surface transition-colors"
+                            title="Replace Selection"
+                        >
+                            <RotateCcw size={10} className="mr-1" /> Replace
+                        </button>
+                     )}
                      <button 
                         onClick={() => onAppendText(msg.text)}
                         className="flex items-center px-1.5 py-0.5 text-[10px] text-muted hover:text-text rounded hover:bg-surface transition-colors"
@@ -317,13 +321,22 @@ export const AIPanel: React.FC<AIPanelProps> = ({
       {/* Input Area */}
       <div className="p-3 bg-background border-t border-border flex-none">
         {/* Context Indicator */}
-        {selectedText && (
-            <div className="flex items-center justify-between bg-surface border border-border rounded-md p-1.5 mb-2 text-xs">
-                <div className="flex items-center text-muted truncate max-w-[200px]">
+        <div className="flex items-center justify-between bg-surface border border-border rounded-md p-1.5 mb-2 text-xs">
+            {selectedText ? (
+                <div className="flex items-center text-muted truncate max-w-[150px] sm:max-w-[180px]">
                     <Quote size={12} className="mr-1.5 flex-shrink-0" />
                     <span className="truncate italic">"{selectedText.substring(0, 30)}..."</span>
                 </div>
-                <div className="flex space-x-1 flex-shrink-0">
+            ) : (
+                <div className="flex items-center text-muted">
+                    <Sparkles size={12} className="mr-1.5 flex-shrink-0" />
+                    <span>Using recent context</span>
+                </div>
+            )}
+            
+            <div className="flex space-x-1 flex-shrink-0">
+                {selectedText && (
+                    <>
                     <button 
                         onClick={() => handleSendMessage("Rewrite this text to be clearer and more professional.", selectedText)}
                         className="px-2 py-0.5 bg-background border border-border rounded hover:border-text transition-colors text-[10px]"
@@ -336,9 +349,17 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                     >
                         Summarize
                     </button>
-                </div>
+                    </>
+                )}
+                 <button 
+                    onClick={() => handleSendMessage("Continue writing based on this context. Maintain the style and flow.", selectedText || contextText)}
+                    className="flex items-center px-2 py-0.5 bg-background border border-border rounded hover:border-text transition-colors text-[10px]"
+                    title="Generate continuation"
+                >
+                    Continue <ArrowRight size={10} className="ml-1" />
+                </button>
             </div>
-        )}
+        </div>
 
         <div className="flex items-end gap-2 relative">
           <input
@@ -349,7 +370,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    handleSendMessage(inputValue, selectedText);
+                    handleSendMessage(inputValue, selectedText || contextText);
                 }
             }}
             placeholder={typeof navigator !== 'undefined' && !navigator.onLine ? "Offline" : selectedText ? "Ask about selection..." : "Ask WesPad AI..."}
@@ -357,7 +378,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             className="flex-1 bg-surface border border-border rounded-lg pl-3 pr-10 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-text/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all placeholder:text-muted/70"
           />
           <button
-            onClick={() => handleSendMessage(inputValue, selectedText)}
+            onClick={() => handleSendMessage(inputValue, selectedText || contextText)}
             disabled={!inputValue.trim() || isLoading || (typeof navigator !== 'undefined' && !navigator.onLine)}
             className="absolute right-1.5 bottom-1.5 p-1.5 bg-text text-background rounded-md hover:opacity-90 disabled:opacity-0 disabled:cursor-not-allowed transition-all"
           >

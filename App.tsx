@@ -48,6 +48,7 @@ const App: React.FC = () => {
   const [activeTabId, setActiveTabId] = useState<string>(DEFAULT_TAB.id);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.EDIT);
   const [cursor, setCursor] = useState<CursorPosition>({ line: 1, column: 1 });
+  const [selectionStats, setSelectionStats] = useState({ wordCount: 0, charCount: 0 });
   const [isSaved, setIsSaved] = useState(true); 
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -626,6 +627,16 @@ const App: React.FC = () => {
     }
     return '';
   };
+  
+  // Get tail context for AI when no selection is present
+  const getContextText = (): string => {
+      // Return last 2000 chars of active content
+      const content = activeTab.content;
+      if (content.length > 2000) {
+          return "..." + content.slice(content.length - 2000);
+      }
+      return content;
+  };
 
   const replaceSelection = (text: string) => {
      if (editorRef.current) {
@@ -740,6 +751,7 @@ const App: React.FC = () => {
             isOpen={isAIPanelOpen} 
             onClose={() => setIsAIPanelOpen(false)}
             selectedText={getSelectedText()}
+            contextText={getContextText()}
             onReplaceText={replaceSelection}
             onAppendText={appendText}
             apiKey={apiKey}
@@ -776,6 +788,7 @@ const App: React.FC = () => {
               content={activeTab.content}
               onChange={handleUpdateContent}
               onCursorChange={setCursor}
+              onSelectionStatsChange={setSelectionStats}
               editorRef={editorRef}
               settings={editorSettings}
               initialScrollTop={activeTab.scrollTop}
@@ -803,6 +816,7 @@ const App: React.FC = () => {
             cursor={cursor}
             characterCount={activeTab.content.length}
             wordCount={wordCount}
+            selectionStats={selectionStats}
             viewMode={viewMode}
             setViewMode={setViewMode}
             isSaved={isSaved}
