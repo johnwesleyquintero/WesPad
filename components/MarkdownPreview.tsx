@@ -1,4 +1,4 @@
-import React, { forwardRef, useState } from 'react';
+import React, { forwardRef, useState, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -61,7 +61,7 @@ const CodeBlock = ({ children, className, ...rest }: any) => {
   );
 };
 
-export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(({ content, fontFamily, onScroll }, ref) => {
+export const MarkdownPreview = memo(forwardRef<HTMLDivElement, MarkdownPreviewProps>(({ content, fontFamily, onScroll }, ref) => {
   const getFontClass = () => {
     switch(fontFamily) {
       case 'sans': return 'font-sans';
@@ -89,6 +89,13 @@ export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(
          <div className="text-muted italic">Nothing to preview. Write something...</div>
        )}
     </div>
+  );
+}), (prevProps, nextProps) => {
+  // Custom comparison to avoid re-renders if content hasn't changed
+  // This is crucial for performance when typing in the editor (Split View)
+  return (
+    prevProps.content === nextProps.content &&
+    prevProps.fontFamily === nextProps.fontFamily
   );
 });
 

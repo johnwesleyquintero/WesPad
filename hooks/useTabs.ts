@@ -48,8 +48,8 @@ export const useTabs = () => {
   // 3. Persist Content to Storage (Debounced)
   useEffect(() => {
     const saveTimer = setTimeout(() => {
-        // Strip history before saving to save space/time
-        const tabsToSave = tabs.map(({ history, historyIndex, ...rest }) => rest);
+        // Strip history and fileHandle (non-serializable) before saving
+        const tabsToSave = tabs.map(({ history, historyIndex, fileHandle, ...rest }) => rest);
         localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(tabsToSave));
         setIsSaved(true);
     }, 1000); // 1s debounce for heavy IO
@@ -64,7 +64,7 @@ export const useTabs = () => {
 
   // Actions
   
-  const createTab = useCallback((title: string, content: string) => {
+  const createTab = useCallback((title: string, content: string, fileHandle?: any) => {
     const newTab: Tab = {
         id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
         title,
@@ -72,7 +72,8 @@ export const useTabs = () => {
         lastModified: Date.now(),
         isCustomTitle: true,
         history: [content],
-        historyIndex: 0
+        historyIndex: 0,
+        fileHandle // Store the handle in memory
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(newTab.id);
@@ -90,7 +91,8 @@ export const useTabs = () => {
                 content: '',
                 history: [''], 
                 historyIndex: 0,
-                lastModified: Date.now()
+                lastModified: Date.now(),
+                fileHandle: undefined
             }));
         }
 

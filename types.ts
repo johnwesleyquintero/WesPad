@@ -8,6 +8,7 @@ export interface Tab {
   historyIndex?: number;
   scrollTop?: number;
   selection?: { start: number; end: number };
+  fileHandle?: any; // FileSystemFileHandle
 }
 
 export interface CursorPosition {

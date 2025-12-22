@@ -5,10 +5,11 @@ import { Tab } from '../types';
 interface UseFileSystemProps {
   activeTab: Tab;
   activeTabId: string;
-  createTab: (title: string, content: string) => void;
+  createTab: (title: string, content: string, handle?: any) => void;
   renameTab: (id: string, newTitle: string) => void;
   setIsSaved: (saved: boolean) => void;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  updateTabState?: (id: string, state: Partial<Tab>) => void;
 }
 
 export const useFileSystem = ({
@@ -17,7 +18,8 @@ export const useFileSystem = ({
   createTab,
   renameTab,
   setIsSaved,
-  addToast
+  addToast,
+  updateTabState
 }: UseFileSystemProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -27,11 +29,23 @@ export const useFileSystem = ({
     addToast('File Exported', 'success');
   };
 
-  const handleSaveAs = async () => {
-    const result = await saveFile(activeTab.content, activeTab.title);
+  const handleSave = async (forceNew: boolean = false) => {
+    // If we have a handle and aren't forcing "Save As", use it.
+    const handleToUse = forceNew ? undefined : activeTab.fileHandle;
+    
+    const result = await saveFile(activeTab.content, activeTab.title, handleToUse);
+    
     if (result.success) {
       setIsSaved(true);
-      if (result.newFilename) renameTab(activeTabId, result.newFilename);
+      if (result.newFilename && result.newFilename !== activeTab.title) {
+          renameTab(activeTabId, result.newFilename);
+      }
+      
+      // Update the handle in memory so future saves are silent
+      if (result.handle && updateTabState) {
+          updateTabState(activeTabId, { fileHandle: result.handle });
+      }
+
       addToast('File Saved', 'success');
     }
   };
@@ -40,7 +54,7 @@ export const useFileSystem = ({
     // Try Native File System API first
     const result = await openFilePicker();
     if (result) {
-        createTab(result.name, result.content);
+        createTab(result.name, result.content, result.handle);
     } else {
         // Fallback to hidden input
         fileInputRef.current?.click();
@@ -60,7 +74,7 @@ export const useFileSystem = ({
 
   return {
     handleExport,
-    handleSaveAs,
+    handleSave,
     handleOpenFile,
     handleFileInputChange,
     fileInputRef

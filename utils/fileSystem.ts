@@ -39,9 +39,13 @@ export const saveFile = async (
     }
   }
 
-  // Fallback
-  downloadFile(content, safeName);
-  return { success: true };
+  // Fallback for browsers without FS Access API
+  if (!existingHandle) {
+      downloadFile(content, safeName);
+      return { success: true };
+  }
+  
+  return { success: false };
 };
 
 export const downloadFile = (content: string, filename: string) => {
@@ -60,7 +64,7 @@ export const downloadFile = (content: string, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-export const openFilePicker = async (): Promise<{ name: string; content: string } | null> => {
+export const openFilePicker = async (): Promise<{ name: string; content: string; handle?: any } | null> => {
   // @ts-ignore
   if (typeof window.showOpenFilePicker === 'function') {
     try {
@@ -76,7 +80,7 @@ export const openFilePicker = async (): Promise<{ name: string; content: string 
       });
       const file = await fileHandle.getFile();
       const text = await file.text();
-      return { name: file.name, content: text };
+      return { name: file.name, content: text, handle: fileHandle };
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         console.error('Open file failed', err);

@@ -92,13 +92,14 @@ const App: React.FC = () => {
 
   // --- Custom Hooks (Modular Logic) ---
 
-  const { handleExport, handleSaveAs, handleOpenFile, handleFileInputChange, fileInputRef } = useFileSystem({
+  const { handleExport, handleSave, handleOpenFile, handleFileInputChange, fileInputRef } = useFileSystem({
     activeTab,
     activeTabId,
     createTab,
     renameTab,
     setIsSaved,
-    addToast
+    addToast,
+    updateTabState // Pass this to allow updating file handles
   });
 
   const { handleEditorScroll, handlePreviewScroll } = useScrollSync(
@@ -126,7 +127,7 @@ const App: React.FC = () => {
   useShortcuts({
       createTab: () => createTab('Untitled', ''),
       openFile: handleOpenFile,
-      saveAs: handleSaveAs,
+      saveAs: () => handleSave(false), // Ctrl+S (Smart Save)
       toggleZenMode: () => { setIsZenMode(p => !p); addToast(isZenMode ? "Exited Zen Mode" : "Zen Mode Active", 'info'); },
       undo,
       redo,
@@ -186,7 +187,7 @@ const App: React.FC = () => {
         <div className="flex-none print:hidden">
           <TabBar 
             tabs={tabs} activeTabId={activeTabId} onTabClick={setActiveTabId} onTabClose={(id) => closeTab(id)} onNewTab={() => createTab('Untitled', '')}
-            onRenameTab={renameTab} onOpenSettings={() => setIsSettingsOpen(true)} onExport={handleExport} onSave={handleSaveAs} onOpen={handleOpenFile}
+            onRenameTab={renameTab} onOpenSettings={() => setIsSettingsOpen(true)} onExport={handleExport} onSave={() => handleSave(true)} onOpen={handleOpenFile}
             onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo}
           />
         </div>
@@ -199,7 +200,7 @@ const App: React.FC = () => {
         />
         <CommandPalette 
            isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)}
-           actions={{ onNewTab: () => createTab('Untitled', ''), onOpenFile: handleOpenFile, onSaveAs: handleSaveAs, onExport: handleExport, onSettings: () => setIsSettingsOpen(true), onAI: () => setIsAIPanelOpen(true), onFind: () => setIsFindOpen(true), onToggleZen: () => setIsZenMode(p => !p), setViewMode: handleChangeViewMode }}
+           actions={{ onNewTab: () => createTab('Untitled', ''), onOpenFile: handleOpenFile, onSaveAs: () => handleSave(true), onExport: handleExport, onSettings: () => setIsSettingsOpen(true), onAI: () => setIsAIPanelOpen(true), onFind: () => setIsFindOpen(true), onToggleZen: () => setIsZenMode(p => !p), setViewMode: handleChangeViewMode }}
         />
         <FindReplaceBar isOpen={isFindOpen} onClose={() => setIsFindOpen(false)} onFindNext={(q) => handleFindNext(q, false)} onFindPrev={(q) => handleFindNext(q, true)} onReplace={handleReplace} onReplaceAll={handleReplaceAll} />
         
