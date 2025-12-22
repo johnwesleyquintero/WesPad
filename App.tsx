@@ -293,7 +293,7 @@ const App: React.FC = () => {
       {!isZenMode && (
         <div className="flex-none print:hidden">
           <TabBar 
-            tabs={tabs} activeTabId={activeTabId} onTabClick={setActiveTabId} onTabClose={(id, e) => closeTab(id)} onNewTab={() => createTab('Untitled', '')}
+            tabs={tabs} activeTabId={activeTabId} onTabClick={setActiveTabId} onTabClose={(id) => closeTab(id)} onNewTab={() => createTab('Untitled', '')}
             onRenameTab={renameTab} onOpenSettings={() => setIsSettingsOpen(true)} onExport={handleExport} onSave={handleSaveAs} onOpen={handleOpenFile}
             onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo}
           />
