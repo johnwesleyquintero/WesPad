@@ -2,44 +2,50 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Tab } from '../types';
 import { STORAGE_KEYS, DEFAULT_TAB } from '../constants';
 
+const getInitialTabs = (): Tab[] => {
+  const savedTabs = localStorage.getItem(STORAGE_KEYS.TABS);
+  if (savedTabs) {
+    try {
+      const parsed = JSON.parse(savedTabs);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((t: any) => ({
+           ...t,
+           history: [t.content],
+           historyIndex: 0
+        }));
+      }
+    } catch (e) {
+      console.error("Failed to load tabs", e);
+    }
+  }
+  return [DEFAULT_TAB];
+};
+
 export const useTabs = () => {
-  const [tabs, setTabs] = useState<Tab[]>([DEFAULT_TAB]);
-  const [activeTabId, setActiveTabId] = useState<string>(DEFAULT_TAB.id);
+  // 1. Lazy Initialization of State (Synchronous)
+  // This ensures that on first render, tabs and activeTabId are consistent.
+  const [tabs, setTabs] = useState<Tab[]>(getInitialTabs);
+  
+  const [activeTabId, setActiveTabId] = useState<string>(() => {
+    const savedActive = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB);
+    const initialTabs = getInitialTabs();
+    
+    // Ensure the saved active ID actually exists in our tabs
+    if (savedActive && initialTabs.some(t => t.id === savedActive)) {
+      return savedActive;
+    }
+    // Fallback to the first tab if saved ID is invalid/missing
+    return initialTabs[0].id;
+  });
+
   const [isSaved, setIsSaved] = useState(true);
   
   // History debounce ref
   const typingTimeoutRef = useRef<number | null>(null);
 
-  // 1. Hydrate from Storage on Mount
-  useEffect(() => {
-    const savedTabs = localStorage.getItem(STORAGE_KEYS.TABS);
-    const savedActive = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB);
-    
-    if (savedTabs) {
-      try {
-        const parsed = JSON.parse(savedTabs);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Re-initialize history for hydrated tabs to save space/memory
-          const hydratedTabs = parsed.map((t: any) => ({
-             ...t,
-             history: [t.content],
-             historyIndex: 0
-          }));
-          setTabs(hydratedTabs);
-        }
-      } catch (e) {
-        console.error("Failed to load tabs", e);
-      }
-    }
-    
-    if (savedActive) {
-      setActiveTabId(savedActive);
-    }
-  }, []);
-
   // 2. Persist to Storage on Change
   useEffect(() => {
-    // Strip history before saving to storage
+    // Strip history before saving to storage to save space
     const tabsToSave = tabs.map(({ history, historyIndex, ...rest }) => rest);
     localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(tabsToSave));
     localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, activeTabId);
@@ -49,6 +55,7 @@ export const useTabs = () => {
     return () => clearTimeout(timer);
   }, [tabs, activeTabId]);
 
+  // Derived state
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
   const canUndo = (activeTab.historyIndex || 0) > 0;
   const canRedo = (activeTab.historyIndex || 0) < (activeTab.history?.length || 0) - 1;
@@ -70,29 +77,35 @@ export const useTabs = () => {
   }, []);
 
   const closeTab = useCallback((id: string) => {
-    if (tabs.length === 1) {
-      // If only one tab, perform a hard reset instead of just clearing content
-      // This fixes the bug where a custom title persists on an empty "new" tab
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      
-      setTabs(prev => prev.map(t => ({
-        ...t,
-        title: 'Untitled',
-        isCustomTitle: false,
-        content: '',
-        history: [''], 
-        historyIndex: 0,
-        lastModified: Date.now()
-      })));
-      return;
-    }
+    setTabs(currentTabs => {
+        // If closing the last tab, just reset it instead of removing
+        if (currentTabs.length === 1) {
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            return currentTabs.map(t => ({
+                ...t,
+                title: 'Untitled',
+                isCustomTitle: false,
+                content: '',
+                history: [''], 
+                historyIndex: 0,
+                lastModified: Date.now()
+            }));
+        }
 
-    const newTabs = tabs.filter(t => t.id !== id);
-    setTabs(newTabs);
-    if (id === activeTabId) {
-      setActiveTabId(newTabs[newTabs.length - 1].id);
-    }
-  }, [tabs, activeTabId]);
+        const newTabs = currentTabs.filter(t => t.id !== id);
+        
+        // If we are closing the active tab, switch to a neighbor
+        if (id === activeTabId) {
+             const index = currentTabs.findIndex(t => t.id === id);
+             // Try to select the previous tab, or the next one (which slides into current index)
+             const nextTab = newTabs[Math.max(0, index - 1)];
+             // Side effect: Update active ID
+             setActiveTabId(nextTab.id);
+        }
+        
+        return newTabs;
+    });
+  }, [activeTabId]);
 
   const renameTab = useCallback((id: string, newTitle: string) => {
     setTabs(prev => prev.map(tab => 
