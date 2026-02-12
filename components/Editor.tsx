@@ -1,6 +1,5 @@
-import React, { useEffect, useLayoutEffect, useState, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { CursorPosition } from "../types";
-import * as TextUtils from "../utils/textManipulation";
 import {
   Bold,
   Italic,
@@ -15,7 +14,11 @@ import {
   Strikethrough,
   CheckSquare,
 } from "lucide-react";
-import { rewriteText } from "../services/geminiService";
+
+import { useEditorSelection } from "../hooks/useEditorSelection";
+import { useEditorFormatting } from "../hooks/useEditorFormatting";
+import { useEditorAi } from "../hooks/useEditorAi";
+import { useEditorKeydown } from "../hooks/useEditorKeydown";
 
 interface EditorProps {
   content: string;
@@ -59,18 +62,43 @@ export const Editor: React.FC<EditorProps> = ({
   apiKey,
   onError,
 }) => {
-  const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const { handleSelect } = useEditorSelection({
+    editorRef,
+    onCursorChange,
+    onSelectionStatsChange,
+  });
+
+  const { handleFormat, handleLink, handleBlockFormat, applyMutation } =
+    useEditorFormatting({
+      editorRef,
+      onChange,
+      onSelect: handleSelect,
+    });
+
+  const { isAiProcessing, handleQuickAiRewrite } = useEditorAi({
+    editorRef,
+    apiKey,
+    onChange,
+    onSelect: handleSelect,
+    onError,
+  });
+
+  const { handleKeyDown } = useEditorKeydown({
+    editorRef,
+    applyMutation,
+    handleFormat,
+    handleLink,
+    onSelect: handleSelect,
+  });
 
   const onSaveStateRef = useRef(onSaveState);
   useEffect(() => {
     onSaveStateRef.current = onSaveState;
   }, [onSaveState]);
 
-  // Restore state on mount (which happens on tab switch due to key prop)
+  // Restore state on mount
   useLayoutEffect(() => {
     if (editorRef.current) {
-      // Order matters: Set selection first, then scroll.
-      // If selection is set last, browser tries to scroll cursor into view, overriding scrollTop.
       if (initialSelection) {
         editorRef.current.setSelectionRange(
           initialSelection.start,
@@ -81,8 +109,7 @@ export const Editor: React.FC<EditorProps> = ({
         editorRef.current.scrollTop = initialScrollTop;
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [editorRef, initialSelection, initialScrollTop]);
 
   // Save state on unmount
   useEffect(() => {
@@ -112,229 +139,9 @@ export const Editor: React.FC<EditorProps> = ({
     }
   };
 
-  const handleSelect = () => {
-    if (editorRef.current) {
-      const { value, selectionStart, selectionEnd } = editorRef.current;
-
-      // Cursor Position Logic
-      const textUpToCursor = value.substring(0, selectionStart);
-      const line = textUpToCursor.split("\n").length;
-      const column = selectionStart - textUpToCursor.lastIndexOf("\n");
-      onCursorChange({ line, column });
-
-      // Selection Stats Logic
-      if (onSelectionStatsChange) {
-        if (selectionStart !== selectionEnd) {
-          const selectedText = value.substring(selectionStart, selectionEnd);
-          const words = selectedText
-            .trim()
-            .split(/\s+/)
-            .filter((w) => w.length > 0).length;
-          onSelectionStatsChange({
-            wordCount: words,
-            charCount: selectedText.length,
-            selectedText: selectedText,
-          });
-        } else {
-          onSelectionStatsChange({
-            wordCount: 0,
-            charCount: 0,
-            selectedText: "",
-          });
-        }
-      }
-    }
-  };
-
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
     handleSelect();
-  };
-
-  const applyMutation = (result: {
-    newValue: string;
-    newSelectionStart: number;
-    newSelectionEnd: number;
-  }) => {
-    onChange(result.newValue);
-    setTimeout(() => {
-      if (editorRef.current) {
-        editorRef.current.focus();
-        editorRef.current.setSelectionRange(
-          result.newSelectionStart,
-          result.newSelectionEnd,
-        );
-        handleSelect();
-      }
-    }, 0);
-  };
-
-  const handleFormat = (wrapper: string) => {
-    if (!editorRef.current) return;
-
-    const state = {
-      value: editorRef.current.value,
-      selectionStart: editorRef.current.selectionStart,
-      selectionEnd: editorRef.current.selectionEnd,
-    };
-
-    const result = TextUtils.handleFormatWrapper(state, wrapper);
-    applyMutation(result);
-  };
-
-  const handleLink = () => {
-    if (!editorRef.current) return;
-    const state = {
-      value: editorRef.current.value,
-      selectionStart: editorRef.current.selectionStart,
-      selectionEnd: editorRef.current.selectionEnd,
-    };
-    const result = TextUtils.handleLink(state);
-    applyMutation(result);
-  };
-
-  const handleBlockFormat = (prefix: string) => {
-    if (!editorRef.current) return;
-    const state = {
-      value: editorRef.current.value,
-      selectionStart: editorRef.current.selectionStart,
-      selectionEnd: editorRef.current.selectionEnd,
-    };
-    const result = TextUtils.toggleLinePrefix(state, prefix);
-    applyMutation(result);
-  };
-
-  const handleQuickAiRewrite = async () => {
-    if (!editorRef.current) return;
-
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      onError("You are offline. AI features require an internet connection.");
-      return;
-    }
-
-    const start = editorRef.current.selectionStart;
-    const end = editorRef.current.selectionEnd;
-    const text = editorRef.current.value.substring(start, end);
-
-    if (!text.trim()) {
-      onError("Please select some text to polish.");
-      return;
-    }
-
-    setIsAiProcessing(true);
-    try {
-      const rewritten = await rewriteText(text, apiKey);
-      if (rewritten) {
-        const newValue =
-          editorRef.current.value.substring(0, start) +
-          rewritten +
-          editorRef.current.value.substring(end);
-        onChange(newValue);
-        // Move selection to end of rewritten text
-        setTimeout(() => {
-          if (editorRef.current) {
-            editorRef.current.focus();
-            const newEnd = start + rewritten.length;
-            editorRef.current.setSelectionRange(start, newEnd);
-            handleSelect();
-          }
-        }, 0);
-      }
-    } catch (error) {
-      console.error("AI Rewrite failed", error);
-      const err = error as { message?: string };
-      if (err.message && err.message.includes("API Key")) {
-        onError("Missing API Key. Please configure it in Settings.");
-      } else {
-        onError("Quick Polish failed. Please check your API key.");
-      }
-    } finally {
-      setIsAiProcessing(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const isMod = e.ctrlKey || e.metaKey;
-    if (!editorRef.current) return;
-
-    const state = {
-      value: editorRef.current.value,
-      selectionStart: editorRef.current.selectionStart,
-      selectionEnd: editorRef.current.selectionEnd,
-    };
-
-    // 1. Tab Indentation
-    if (e.key === "Tab") {
-      const result = TextUtils.handleTabIndentation(state);
-      e.preventDefault();
-      applyMutation(result);
-      return;
-    }
-
-    // 2. Overtype closing pair
-    if (!isMod) {
-      const overtypeResult = TextUtils.handleOvertype(state, e.key);
-      if (overtypeResult) {
-        e.preventDefault();
-        // Just move cursor, no value change
-        if (editorRef.current) {
-          editorRef.current.setSelectionRange(
-            overtypeResult.newSelectionStart,
-            overtypeResult.newSelectionEnd,
-          );
-          handleSelect();
-        }
-        return;
-      }
-    }
-
-    // 3. Auto-Close Pairs
-    if (!isMod) {
-      const autoCloseResult = TextUtils.handleAutoClose(state, e.key);
-      if (autoCloseResult) {
-        e.preventDefault();
-        applyMutation(autoCloseResult);
-        return;
-      }
-    }
-
-    // 4. Smart Lists (Enter)
-    if (e.key === "Enter") {
-      const listResult = TextUtils.handleSmartList(state);
-      if (listResult) {
-        e.preventDefault();
-        applyMutation(listResult);
-        return;
-      }
-    }
-
-    // 5. Smart Backspace
-    if (e.key === "Backspace") {
-      const backspaceResult = TextUtils.handleSmartBackspace(state);
-      if (backspaceResult) {
-        e.preventDefault();
-        applyMutation(backspaceResult);
-        return;
-      }
-    }
-
-    // Bold: Ctrl+B
-    if (isMod && e.key.toLowerCase() === "b") {
-      e.preventDefault();
-      handleFormat("**");
-    }
-
-    // Italic: Ctrl+I
-    if (isMod && e.key.toLowerCase() === "i") {
-      e.preventDefault();
-      handleFormat("*");
-    }
-
-    // Link: Ctrl+L
-    if (isMod && e.key.toLowerCase() === "l") {
-      e.preventDefault();
-      handleLink();
-    }
   };
 
   const getFontFamily = () => {

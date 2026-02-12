@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { CursorPosition, ViewMode, Toast } from "./types";
+import { CursorPosition, ViewMode } from "./types";
 import { TabBar } from "./components/TabBar";
 import { Editor } from "./components/Editor";
 import { StatusBar } from "./components/StatusBar";
@@ -24,8 +24,13 @@ import { useScrollSync } from "./hooks/useScrollSync";
 import { useDragDrop } from "./hooks/useDragDrop";
 import { useFindReplace } from "./hooks/useFindReplace";
 import { useShortcuts } from "./hooks/useShortcuts";
+import { useToast } from "./hooks/useToast";
+import { useSettings } from "./hooks/useSettings";
+import { useUIState } from "./hooks/useUIState";
 
-import { STORAGE_KEYS, DEFAULT_SETTINGS } from "./constants";
+import { calculateReadingTime, calculateWordCount } from "./utils/textStats";
+
+import { STORAGE_KEYS } from "./constants";
 
 const App: React.FC = () => {
   // --- Core State ---
@@ -48,81 +53,57 @@ const App: React.FC = () => {
   } = useTabs();
   const { theme, setTheme } = useTheme();
 
-  // --- UI State ---
-  const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.EDIT);
+  // --- New Modular State ---
+  const { toasts, addToast, removeToast } = useToast();
+  const {
+    apiKey,
+    editorSettings,
+    setEditorSettings,
+    handleSaveApiKey: saveApiKey,
+    viewMode,
+    handleChangeViewMode,
+  } = useSettings();
+  const {
+    isAIPanelOpen,
+    setIsAIPanelOpen,
+    isSettingsOpen,
+    setIsSettingsOpen,
+    isFindOpen,
+    setIsFindOpen,
+    isCommandPaletteOpen,
+    setIsCommandPaletteOpen,
+    isZenMode,
+    setIsZenMode,
+    toggleAI,
+    toggleFind,
+    toggleCommandPalette,
+    toggleZenMode,
+  } = useUIState();
+
+  useEffect(() => {
+    if (isZenMode) {
+      addToast("Zen Mode Active", "info");
+    } else {
+      // Avoid toast on initial load
+      const isInitial = !localStorage.getItem(STORAGE_KEYS.VIEW_MODE);
+      if (!isInitial) addToast("Exited Zen Mode", "info");
+    }
+  }, [isZenMode, addToast]);
+
+  // --- Remaining UI State ---
   const [cursor, setCursor] = useState<CursorPosition>({ line: 1, column: 1 });
   const [selectionStats, setSelectionStats] = useState({
     wordCount: 0,
     charCount: 0,
     selectedText: "",
   });
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  // Modal/Panel Visibility
-  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isFindOpen, setIsFindOpen] = useState(false);
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isZenMode, setIsZenMode] = useState(false);
-
-  // Settings
-  const [apiKey, setApiKey] = useState("");
-  const [editorSettings, setEditorSettings] = useState(DEFAULT_SETTINGS);
 
   // --- Refs ---
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  // --- Effects (Settings & API Key) ---
-  useEffect(() => {
-    const savedKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
-    const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    const savedViewMode = localStorage.getItem(STORAGE_KEYS.VIEW_MODE);
-
-    if (savedKey) setApiKey(savedKey);
-    if (savedSettings) {
-      try {
-        setEditorSettings({
-          ...DEFAULT_SETTINGS,
-          ...JSON.parse(savedSettings),
-        });
-      } catch (e) {
-        console.error("Failed to load settings", e);
-      }
-    }
-    if (
-      savedViewMode &&
-      Object.values(ViewMode).includes(savedViewMode as ViewMode)
-    ) {
-      setViewMode(savedViewMode as ViewMode);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(editorSettings));
-  }, [editorSettings]);
-
-  // Persist View Mode
-  const handleChangeViewMode = (mode: ViewMode) => {
-    setViewMode(mode);
-    localStorage.setItem(STORAGE_KEYS.VIEW_MODE, mode);
-  };
-
-  // --- Toast Helpers ---
-  const addToast = (
-    message: string,
-    type: "success" | "error" | "info" = "info",
-  ) => {
-    setToasts((prev) => [
-      ...prev,
-      { id: Date.now().toString(), message, type },
-    ]);
-  };
-  const removeToast = (id: string) =>
-    setToasts((prev) => prev.filter((t) => t.id !== id));
   const handleSaveApiKey = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem(STORAGE_KEYS.API_KEY, key);
+    saveApiKey(key);
     addToast("API Key Saved", "success");
   };
 
@@ -171,38 +152,17 @@ const App: React.FC = () => {
     () => createTab("Untitled", ""),
     [createTab],
   );
-  const handleToggleZenMode = useCallback(() => {
-    setIsZenMode((p) => !p);
-    addToast(isZenMode ? "Exited Zen Mode" : "Zen Mode Active", "info");
-  }, [isZenMode]);
-
-  const handleToggleAI = useCallback(() => {
-    setIsAIPanelOpen((p) => !p);
-    setIsFindOpen(false);
-    setIsCommandPaletteOpen(false);
-  }, []);
-
-  const handleToggleFind = useCallback(() => {
-    setIsFindOpen((p) => !p);
-    setIsAIPanelOpen(false);
-    setIsCommandPaletteOpen(false);
-  }, []);
-
-  const handleToggleCommandPalette = useCallback(
-    () => setIsCommandPaletteOpen(true),
-    [],
-  );
 
   useShortcuts({
     createTab: handleCreateNewTab,
     openFile: handleOpenFile,
     saveAs: () => handleSave(false), // Still inline but handleSave is stable-ish
-    toggleZenMode: handleToggleZenMode,
+    toggleZenMode,
     undo,
     redo,
-    toggleAI: handleToggleAI,
-    toggleFind: handleToggleFind,
-    toggleCommandPalette: handleToggleCommandPalette,
+    toggleAI,
+    toggleFind,
+    toggleCommandPalette,
     isZenMode,
   });
 
@@ -225,7 +185,7 @@ const App: React.FC = () => {
         addToast("Text Replaced", "success");
       }
     },
-    [updateContent],
+    [updateContent, addToast],
   );
 
   const handleEditorSaveState = useCallback(
@@ -249,17 +209,16 @@ const App: React.FC = () => {
     [],
   );
 
-  const handleEditorError = useCallback((msg: string) => {
-    addToast(msg, "error");
-  }, []);
+  const handleEditorError = useCallback(
+    (msg: string) => {
+      addToast(msg, "error");
+    },
+    [addToast],
+  );
 
   // Derived State
-  const words = activeTab.content
-    .trim()
-    .split(/\s+/)
-    .filter((word) => word.length > 0);
-  const wordCount = words.length;
-  const readingTime = Math.ceil(wordCount / 225);
+  const wordCount = calculateWordCount(activeTab.content);
+  const readingTime = calculateReadingTime(wordCount);
 
   const handleCloseTab = useCallback((id: string) => closeTab(id), [closeTab]);
   const handleNewTab = useCallback(
