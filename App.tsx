@@ -263,7 +263,7 @@ const App: React.FC = () => {
 
   return (
     <div
-      className="flex flex-col h-screen bg-background text-text font-sans overflow-hidden transition-colors duration-200 relative"
+      className="flex flex-col h-full bg-background text-text font-sans overflow-hidden transition-colors duration-200 relative"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

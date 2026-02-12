@@ -1,4 +1,4 @@
-const CACHE_NAME = "wespad-v3";
+const CACHE_NAME = "wespad-v4";
 
 // Install event: Skip waiting to activate immediately
 self.addEventListener("install", () => {
