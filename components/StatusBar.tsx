@@ -25,26 +25,30 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 }) => {
   return (
     <div className="h-7 bg-background border-t border-border flex items-center justify-between px-3 text-[10px] sm:text-xs text-muted select-none transition-colors">
-      <div className="flex items-center space-x-4">
-        <span className="w-24 font-mono">
-          Ln {cursor.line}, Col {cursor.column}
+      <div className="flex items-center space-x-2 sm:space-x-4 overflow-hidden">
+        <span className="w-16 sm:w-24 font-mono truncate">
+          {cursor.line}:{cursor.column}
         </span>
 
-        <div className="flex items-center space-x-3 border-l border-border pl-4">
+        <div className="flex items-center space-x-2 sm:space-x-3 border-l border-border pl-2 sm:pl-4 overflow-hidden">
           {selectionStats && selectionStats.charCount > 0 ? (
             <>
-              <span className="font-mono text-text">
-                {selectionStats.wordCount} words selected
-              </span>
-              <span className="font-mono">
-                {selectionStats.charCount} chars
+              <span className="font-mono text-text truncate">
+                {selectionStats.wordCount}{" "}
+                <span className="hidden xs:inline">words</span>
+                <span className="xs:hidden">w</span>
               </span>
             </>
           ) : (
             <>
-              <span className="font-mono">{wordCount} words</span>
-              <span className="font-mono">{characterCount} chars</span>
-              <span className="font-mono border-l border-border pl-3 ml-3 hidden sm:inline">
+              <span className="font-mono truncate">
+                {wordCount} <span className="hidden xs:inline">words</span>
+                <span className="xs:hidden">w</span>
+              </span>
+              <span className="font-mono truncate hidden min-[400px]:inline">
+                {characterCount} chars
+              </span>
+              <span className="font-mono border-l border-border pl-3 ml-3 hidden md:inline">
                 ~{readingTime} min read
               </span>
             </>
@@ -52,7 +56,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         </div>
 
         <span
-          className={`border-l border-border pl-4 ${isSaved ? "text-muted" : "text-text"}`}
+          className={`border-l border-border pl-2 sm:pl-4 hidden xs:inline ${isSaved ? "text-muted" : "text-text"}`}
         >
           {isSaved ? "Saved" : "Unsaved"}
         </span>

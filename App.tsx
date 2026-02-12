@@ -268,7 +268,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         <SettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
@@ -337,7 +337,7 @@ const App: React.FC = () => {
 
         {(viewMode === ViewMode.EDIT || viewMode === ViewMode.SPLIT) && (
           <div
-            className={`${viewMode === ViewMode.SPLIT ? "w-1/2 border-r border-border" : "w-full"} h-full bg-background`}
+            className={`${viewMode === ViewMode.SPLIT ? "h-1/2 md:h-full md:w-1/2 border-b md:border-b-0 md:border-r border-border" : "h-full w-full"} bg-background`}
           >
             <Editor
               key={activeTabId}
@@ -359,7 +359,7 @@ const App: React.FC = () => {
         )}
         {(viewMode === ViewMode.PREVIEW || viewMode === ViewMode.SPLIT) && (
           <div
-            className={`${viewMode === ViewMode.SPLIT ? "w-1/2" : "w-full"} h-full bg-surface`}
+            className={`${viewMode === ViewMode.SPLIT ? "h-1/2 md:h-full md:w-1/2" : "h-full w-full"} bg-surface`}
           >
             <MarkdownPreview
               ref={previewRef}

@@ -79,27 +79,27 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-12 right-4 w-80 sm:w-96 h-[550px] max-h-[85vh] bg-surface border border-border shadow-2xl rounded-xl flex flex-col z-50 overflow-hidden text-text transition-all animate-in fade-in slide-in-from-top-2">
+    <div className="fixed inset-0 sm:inset-auto sm:top-12 sm:right-4 w-full sm:w-96 h-full sm:h-[550px] sm:max-h-[85vh] bg-surface sm:border sm:border-border shadow-2xl sm:rounded-xl flex flex-col z-50 overflow-hidden text-text transition-all animate-in fade-in slide-in-from-bottom sm:slide-in-from-top-2">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 bg-background border-b border-border flex-none">
-        <div className="flex items-center text-text font-semibold text-sm">
-          <Sparkles size={16} className="mr-2 text-yellow-500" />
+      <div className="flex items-center justify-between p-4 sm:p-3 bg-background border-b border-border flex-none">
+        <div className="flex items-center text-text font-semibold text-base sm:text-sm">
+          <Sparkles size={18} className="mr-2 text-yellow-500 sm:w-4 sm:h-4" />
           <span>WesPad Assistant</span>
         </div>
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-2 sm:space-x-1">
           <button
             onClick={clearChat}
-            className="p-1.5 text-muted hover:text-text rounded transition-colors"
+            className="p-2 sm:p-1.5 text-muted hover:text-text rounded transition-colors"
             title="Clear Chat"
           >
-            <Trash2 size={14} />
+            <Trash2 size={18} className="sm:w-3.5 sm:h-3.5" />
           </button>
           <button
             onClick={onClose}
-            className="p-1.5 text-muted hover:text-text rounded transition-colors"
+            className="p-2 sm:p-1.5 text-muted hover:text-text rounded transition-colors"
             title="Close"
           >
-            <X size={16} />
+            <X size={20} className="sm:w-4 sm:h-4" />
           </button>
         </div>
       </div>
