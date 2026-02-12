@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState, useRef } from "react";
 import { CursorPosition } from "../types";
 import * as TextUtils from "../utils/textManipulation";
 import {
@@ -61,6 +61,11 @@ export const Editor: React.FC<EditorProps> = ({
 }) => {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
 
+  const onSaveStateRef = useRef(onSaveState);
+  useEffect(() => {
+    onSaveStateRef.current = onSaveState;
+  }, [onSaveState]);
+
   // Restore state on mount (which happens on tab switch due to key prop)
   useLayoutEffect(() => {
     if (editorRef.current) {
@@ -84,7 +89,7 @@ export const Editor: React.FC<EditorProps> = ({
     const currentEditor = editorRef.current;
     return () => {
       if (currentEditor) {
-        onSaveState({
+        onSaveStateRef.current({
           scrollTop: currentEditor.scrollTop,
           selection: {
             start: currentEditor.selectionStart,
@@ -93,7 +98,7 @@ export const Editor: React.FC<EditorProps> = ({
         });
       }
     };
-  }, [onSaveState, editorRef]);
+  }, [editorRef]);
 
   const handleBlur = () => {
     if (editorRef.current) {

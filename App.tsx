@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { CursorPosition, ViewMode, Toast } from "./types";
 import { TabBar } from "./components/TabBar";
 import { Editor } from "./components/Editor";
@@ -167,48 +167,88 @@ const App: React.FC = () => {
     addToast,
   });
 
+  const handleCreateNewTab = useCallback(() => createTab("Untitled", ""), [createTab]);
+  const handleToggleZenMode = useCallback(() => {
+    setIsZenMode((p) => !p);
+    addToast(isZenMode ? "Exited Zen Mode" : "Zen Mode Active", "info");
+  }, [isZenMode]);
+
+  const handleToggleAI = useCallback(() => {
+    setIsAIPanelOpen((p) => !p);
+    setIsFindOpen(false);
+    setIsCommandPaletteOpen(false);
+  }, []);
+
+  const handleToggleFind = useCallback(() => {
+    setIsFindOpen((p) => !p);
+    setIsAIPanelOpen(false);
+    setIsCommandPaletteOpen(false);
+  }, []);
+
+  const handleToggleCommandPalette = useCallback(
+    () => setIsCommandPaletteOpen(true),
+    [],
+  );
+
   useShortcuts({
-    createTab: () => createTab("Untitled", ""),
+    createTab: handleCreateNewTab,
     openFile: handleOpenFile,
-    saveAs: () => handleSave(false), // Ctrl+S (Smart Save)
-    toggleZenMode: () => {
-      setIsZenMode((p) => !p);
-      addToast(isZenMode ? "Exited Zen Mode" : "Zen Mode Active", "info");
-    },
+    saveAs: () => handleSave(false), // Still inline but handleSave is stable-ish
+    toggleZenMode: handleToggleZenMode,
     undo,
     redo,
-    toggleAI: () => {
-      setIsAIPanelOpen((p) => !p);
-      setIsFindOpen(false);
-      setIsCommandPaletteOpen(false);
-    },
-    toggleFind: () => {
-      setIsFindOpen((p) => !p);
-      setIsAIPanelOpen(false);
-      setIsCommandPaletteOpen(false);
-    },
-    toggleCommandPalette: () => setIsCommandPaletteOpen(true),
+    toggleAI: handleToggleAI,
+    toggleFind: handleToggleFind,
+    toggleCommandPalette: handleToggleCommandPalette,
     isZenMode,
   });
 
-  const replaceSelection = (text: string) => {
-    if (editorRef.current) {
-      const { selectionStart, selectionEnd, value } = editorRef.current;
-      const newValue =
-        value.substring(0, selectionStart) +
-        text +
-        value.substring(selectionEnd);
-      updateContent(newValue);
-      setTimeout(() => {
-        if (editorRef.current) {
-          editorRef.current.selectionStart = editorRef.current.selectionEnd =
-            selectionStart + text.length;
-          editorRef.current.focus();
-        }
-      }, 0);
-      addToast("Text Replaced", "success");
-    }
-  };
+  const replaceSelection = useCallback(
+    (text: string) => {
+      if (editorRef.current) {
+        const { selectionStart, selectionEnd, value } = editorRef.current;
+        const newValue =
+          value.substring(0, selectionStart) +
+          text +
+          value.substring(selectionEnd);
+        updateContent(newValue);
+        setTimeout(() => {
+          if (editorRef.current) {
+            editorRef.current.selectionStart = editorRef.current.selectionEnd =
+              selectionStart + text.length;
+            editorRef.current.focus();
+          }
+        }, 0);
+        addToast("Text Replaced", "success");
+      }
+    },
+    [updateContent],
+  );
+
+  const handleEditorSaveState = useCallback(
+    (state: {
+      scrollTop: number;
+      selection: { start: number; end: number };
+    }) => {
+      updateTabState(activeTabId, state);
+    },
+    [activeTabId, updateTabState],
+  );
+
+  const handleCursorChange = useCallback((pos: CursorPosition) => {
+    setCursor(pos);
+  }, []);
+
+  const handleSelectionStatsChange = useCallback(
+    (stats: { wordCount: number; charCount: number; selectedText: string }) => {
+      setSelectionStats(stats);
+    },
+    [],
+  );
+
+  const handleEditorError = useCallback((msg: string) => {
+    addToast(msg, "error");
+  }, []);
 
   // Derived State
   const words = activeTab.content
@@ -217,6 +257,9 @@ const App: React.FC = () => {
     .filter((word) => word.length > 0);
   const wordCount = words.length;
   const readingTime = Math.ceil(wordCount / 225);
+
+  const handleCloseTab = useCallback((id: string) => closeTab(id), [closeTab]);
+  const handleNewTab = useCallback(() => createTab("Untitled", ""), [createTab]);
 
   return (
     <div
@@ -253,8 +296,8 @@ const App: React.FC = () => {
             tabs={tabs}
             activeTabId={activeTabId}
             onTabClick={setActiveTabId}
-            onTabClose={(id) => closeTab(id)}
-            onNewTab={() => createTab("Untitled", "")}
+            onTabClose={handleCloseTab}
+            onNewTab={handleNewTab}
             onRenameTab={renameTab}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onExport={handleExport}
@@ -283,7 +326,7 @@ const App: React.FC = () => {
           isOpen={isCommandPaletteOpen}
           onClose={() => setIsCommandPaletteOpen(false)}
           actions={{
-            onNewTab: () => createTab("Untitled", ""),
+            onNewTab: handleNewTab,
             onOpenFile: handleOpenFile,
             onSaveAs: () => handleSave(true),
             onExport: handleExport,
@@ -343,17 +386,17 @@ const App: React.FC = () => {
               key={activeTabId}
               content={activeTab.content}
               onChange={updateContent}
-              onCursorChange={setCursor}
-              onSelectionStatsChange={setSelectionStats}
+              onCursorChange={handleCursorChange}
+              onSelectionStatsChange={handleSelectionStatsChange}
               editorRef={editorRef}
               settings={editorSettings}
               initialScrollTop={activeTab.scrollTop}
               initialSelection={activeTab.selection}
-              onSaveState={(state) => updateTabState(activeTabId, state)}
+              onSaveState={handleEditorSaveState}
               isZenMode={isZenMode}
               onScroll={handleEditorScroll}
               apiKey={apiKey}
-              onError={(msg) => addToast(msg, "error")}
+              onError={handleEditorError}
             />
           </div>
         )}
@@ -371,20 +414,18 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {!isZenMode && (
-        <div className="flex-none print:hidden">
-          <StatusBar
-            cursor={cursor}
-            characterCount={activeTab.content.length}
-            wordCount={wordCount}
-            selectionStats={selectionStats}
-            viewMode={viewMode}
-            setViewMode={handleChangeViewMode}
-            isSaved={isSaved}
-            readingTime={readingTime}
-          />
-        </div>
-      )}
+      <div className="flex-none print:hidden">
+        <StatusBar
+          cursor={cursor}
+          characterCount={activeTab.content.length}
+          wordCount={wordCount}
+          selectionStats={selectionStats}
+          viewMode={viewMode}
+          setViewMode={handleChangeViewMode}
+          isSaved={isSaved}
+          readingTime={readingTime}
+        />
+      </div>
     </div>
   );
 };
