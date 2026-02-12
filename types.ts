@@ -8,7 +8,7 @@ export interface Tab {
   historyIndex?: number;
   scrollTop?: number;
   selection?: { start: number; end: number };
-  fileHandle?: any; // FileSystemFileHandle
+  fileHandle?: FileSystemFileHandle;
 }
 
 export interface CursorPosition {
@@ -17,9 +17,9 @@ export interface CursorPosition {
 }
 
 export enum ViewMode {
-  EDIT = 'EDIT',
-  PREVIEW = 'PREVIEW',
-  SPLIT = 'SPLIT'
+  EDIT = "EDIT",
+  PREVIEW = "PREVIEW",
+  SPLIT = "SPLIT",
 }
 
 export interface AIState {
@@ -27,11 +27,11 @@ export interface AIState {
   error: string | null;
   result: string | null;
   isOpen: boolean;
-  activeMode: 'rewrite' | 'summarize' | 'generate' | null;
+  activeMode: "rewrite" | "summarize" | "generate" | null;
 }
 
 export interface Toast {
   id: string;
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: "success" | "error" | "info";
 }

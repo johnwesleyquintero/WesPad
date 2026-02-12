@@ -5,33 +5,37 @@
 :root {
   /* Light Mode (Default variables) */
   --background: #ffffff;
-  --surface: #f4f4f5;      /* neutral-100 */
-  --text: #171717;         /* neutral-900 */
-  --muted: #737373;        /* neutral-500 */
-  --border: #e5e5e5;       /* neutral-200 */
-  --accent: #000000;       /* black */
-  --selection: #fde047;    /* yellow-300 */
+  --surface: #f4f4f5; /* neutral-100 */
+  --text: #171717; /* neutral-900 */
+  --muted: #737373; /* neutral-500 */
+  --border: #e5e5e5; /* neutral-200 */
+  --accent: #000000; /* black */
+  --selection: #fde047; /* yellow-300 */
 }
 
 .dark {
   /* Dark Mode */
-  --background: #0a0a0a;   /* neutral-950 */
-  --surface: #171717;      /* neutral-900 */
-  --text: #e5e5e5;         /* neutral-200 */
-  --muted: #737373;        /* neutral-500 */
-  --border: #262626;       /* neutral-800 */
-  --accent: #ffffff;       /* white */
-  --selection: #265973;    /* muted blue */
+  --background: #0a0a0a; /* neutral-950 */
+  --surface: #171717; /* neutral-900 */
+  --text: #e5e5e5; /* neutral-200 */
+  --muted: #737373; /* neutral-500 */
+  --border: #262626; /* neutral-800 */
+  --accent: #ffffff; /* white */
+  --selection: #265973; /* muted blue */
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   height: 100dvh; /* Dynamic viewport height for mobile browsers */
   margin: 0;
   overflow: hidden;
   background-color: var(--background);
   color: var(--text);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
   overscroll-behavior-y: none; /* Prevents pull-to-refresh on mobile */
 }
 
@@ -48,32 +52,32 @@ textarea:focus {
 
 /* Custom Thin Scrollbar */
 ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-    background: transparent;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 5px;
-    border: 3px solid var(--background); /* Creates padding effect */
+  background: var(--border);
+  border-radius: 5px;
+  border: 3px solid var(--background); /* Creates padding effect */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--muted);
+  background: var(--muted);
 }
 
 /* Utility to hide scrollbar for specific elements (like TabBar) */
 .no-scrollbar::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 .no-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 /* Print Styling for PDF Export */
@@ -82,9 +86,11 @@ textarea:focus {
   .print\:hidden {
     display: none !important;
   }
-  
+
   /* Reset layout for printing */
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: auto;
     overflow: visible;
     background-color: white;
@@ -92,7 +98,8 @@ textarea:focus {
   }
 
   /* Editor and Preview should take up full width and no scroll */
-  textarea, .prose {
+  textarea,
+  .prose {
     width: 100% !important;
     height: auto !important;
     overflow: visible !important;
@@ -100,7 +107,7 @@ textarea:focus {
     margin: 0 !important;
     border: none !important;
   }
-  
+
   /* Ensure text color is black for saving ink */
   body {
     color: black !important;

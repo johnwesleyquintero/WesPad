@@ -1,17 +1,17 @@
-import { Tab } from './types';
+import { Tab } from "./types";
 
 export const STORAGE_KEYS = {
-  TABS: 'wespad_tabs',
-  ACTIVE_TAB: 'wespad_active_tab',
-  API_KEY: 'wespad_api_key',
-  SETTINGS: 'wespad_settings',
-  THEME: 'wespad_theme',
-  VIEW_MODE: 'wespad_view_mode',
+  TABS: "wespad_tabs",
+  ACTIVE_TAB: "wespad_active_tab",
+  API_KEY: "wespad_api_key",
+  SETTINGS: "wespad_settings",
+  THEME: "wespad_theme",
+  VIEW_MODE: "wespad_view_mode",
 };
 
 export const DEFAULT_TAB: Tab = {
-  id: 'tab-1',
-  title: 'Welcome.md',
+  id: "tab-1",
+  title: "Welcome.md",
   content: `# Welcome to WesPad
 
 A sovereign, local-first, AI-optional writing pad.
@@ -25,20 +25,20 @@ Start typing...
 `,
   lastModified: Date.now(),
   history: [],
-  historyIndex: 0
+  historyIndex: 0,
 };
 
 export const DEFAULT_SETTINGS = {
   fontSize: 16,
-  fontFamily: 'mono',
+  fontFamily: "mono",
   wordWrap: true,
   scrollSync: true,
 };
 
 export const AUTO_CLOSE_PAIRS: Record<string, string> = {
-  '(': ')',
-  '[': ']',
-  '{': '}',
+  "(": ")",
+  "[": "]",
+  "{": "}",
   '"': '"',
-  '`': '`',
+  "`": "`",
 };

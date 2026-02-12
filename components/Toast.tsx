@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Toast as ToastType } from '../types';
-import { Check, AlertCircle, Info, X } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { Toast as ToastType } from "../types";
+import { Check, AlertCircle, Info, X } from "lucide-react";
 
 interface ToastProps {
   toasts: ToastType[];
@@ -17,7 +17,10 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
   );
 };
 
-const ToastItem: React.FC<{ toast: ToastType; onDismiss: (id: string) => void }> = ({ toast, onDismiss }) => {
+const ToastItem: React.FC<{
+  toast: ToastType;
+  onDismiss: (id: string) => void;
+}> = ({ toast, onDismiss }) => {
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
@@ -36,26 +39,29 @@ const ToastItem: React.FC<{ toast: ToastType; onDismiss: (id: string) => void }>
 
   const getIcon = () => {
     switch (toast.type) {
-      case 'success': return <Check size={14} className="text-green-500" />;
-      case 'error': return <AlertCircle size={14} className="text-red-500" />;
-      default: return <Info size={14} className="text-blue-500" />;
+      case "success":
+        return <Check size={14} className="text-green-500" />;
+      case "error":
+        return <AlertCircle size={14} className="text-red-500" />;
+      default:
+        return <Info size={14} className="text-blue-500" />;
     }
   };
 
   return (
-    <div 
+    <div
       className={`
         pointer-events-auto flex items-center gap-3 px-4 py-2.5 
         bg-surface border border-border rounded-full shadow-xl 
         text-sm font-medium text-text backdrop-blur-md
         transition-all duration-300 ease-out transform
-        ${isExiting ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100 animate-in slide-in-from-bottom-2 fade-in'}
+        ${isExiting ? "opacity-0 translate-y-2 scale-95" : "opacity-100 translate-y-0 scale-100 animate-in slide-in-from-bottom-2 fade-in"}
       `}
     >
       <div className="flex-shrink-0">{getIcon()}</div>
       <span>{toast.message}</span>
-      <button 
-        onClick={handleDismiss} 
+      <button
+        onClick={handleDismiss}
         className="ml-2 text-muted hover:text-text transition-colors p-0.5 rounded-full hover:bg-background"
       >
         <X size={12} />

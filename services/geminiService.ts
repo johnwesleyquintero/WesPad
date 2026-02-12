@@ -1,6 +1,6 @@
 import { GoogleGenAI, Chat } from "@google/genai";
 
-const MODEL_NAME = 'gemini-3-flash-preview';
+const MODEL_NAME = "gemini-1.5-flash";
 
 /**
  * Safely retrieves the API key from the environment if available.
@@ -8,16 +8,16 @@ const MODEL_NAME = 'gemini-3-flash-preview';
 const getEnvApiKey = (): string | undefined => {
   try {
     // Check if process is defined (node/shim)
-    if (typeof process !== 'undefined' && process.env) {
+    if (typeof process !== "undefined" && process.env) {
       return process.env.API_KEY;
     }
     // Check if import.meta.env is defined (Vite)
     // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
+    if (typeof import.meta !== "undefined" && import.meta.env) {
       // @ts-ignore
       return import.meta.env.VITE_API_KEY || import.meta.env.API_KEY;
     }
-  } catch (e) {
+  } catch {
     // Ignore errors in strict environments
   }
   return undefined;
@@ -38,22 +38,28 @@ const getClient = (apiKey?: string) => {
 /**
  * Creates a stateful chat session.
  */
-export const createChatSession = (apiKey?: string, systemInstruction?: string): Chat => {
+export const createChatSession = (
+  apiKey?: string,
+  systemInstruction?: string,
+): Chat => {
   const ai = getClient(apiKey);
   return ai.chats.create({
     model: MODEL_NAME,
     config: {
-      systemInstruction
-    }
+      systemInstruction,
+    },
   });
 };
 
 /**
  * rewrites the selected text to be more concise and professional.
  */
-export const rewriteText = async (text: string, apiKey?: string): Promise<string> => {
+export const rewriteText = async (
+  text: string,
+  apiKey?: string,
+): Promise<string> => {
   if (!text.trim()) return "";
-  
+
   try {
     const ai = getClient(apiKey);
     const response = await ai.models.generateContent({
@@ -70,7 +76,10 @@ export const rewriteText = async (text: string, apiKey?: string): Promise<string
 /**
  * Summarizes the provided text.
  */
-export const summarizeText = async (text: string, apiKey?: string): Promise<string> => {
+export const summarizeText = async (
+  text: string,
+  apiKey?: string,
+): Promise<string> => {
   if (!text.trim()) return "";
 
   try {
@@ -89,7 +98,10 @@ export const summarizeText = async (text: string, apiKey?: string): Promise<stri
 /**
  * Generates text based on a user prompt.
  */
-export const generateText = async (prompt: string, apiKey?: string): Promise<string> => {
+export const generateText = async (
+  prompt: string,
+  apiKey?: string,
+): Promise<string> => {
   if (!prompt.trim()) return "";
 
   try {

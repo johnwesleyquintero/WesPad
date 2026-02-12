@@ -1,4 +1,4 @@
-import { AUTO_CLOSE_PAIRS } from '../constants';
+import { AUTO_CLOSE_PAIRS } from "../constants";
 
 interface TextState {
   value: string;
@@ -18,29 +18,33 @@ export const handleTabIndentation = (state: TextState): MutationResult => {
 
   // 1. Single cursor: Insert 2 spaces
   if (selectionStart === selectionEnd) {
-    const newValue = value.substring(0, selectionStart) + '  ' + value.substring(selectionEnd);
+    const newValue =
+      value.substring(0, selectionStart) + "  " + value.substring(selectionEnd);
     return {
       newValue,
       newSelectionStart: selectionStart + 2,
       newSelectionEnd: selectionStart + 2,
-      shouldPreventDefault: true
+      shouldPreventDefault: true,
     };
   }
 
   // 2. Multi-line selection: Block Indent
   // Identify start and end lines
-  const startLineIndex = value.lastIndexOf('\n', selectionStart - 1) + 1;
-  let endLineIndex = value.indexOf('\n', selectionEnd);
+  const startLineIndex = value.lastIndexOf("\n", selectionStart - 1) + 1;
+  let endLineIndex = value.indexOf("\n", selectionEnd);
   if (endLineIndex === -1) endLineIndex = value.length;
 
   const affectedText = value.substring(startLineIndex, endLineIndex);
-  const lines = affectedText.split('\n');
-  
+  const lines = affectedText.split("\n");
+
   // Add indentation to each line
-  const indentedLines = lines.map(line => '  ' + line);
-  const newBlock = indentedLines.join('\n');
-  
-  const newValue = value.substring(0, startLineIndex) + newBlock + value.substring(endLineIndex);
+  const indentedLines = lines.map((line) => "  " + line);
+  const newBlock = indentedLines.join("\n");
+
+  const newValue =
+    value.substring(0, startLineIndex) +
+    newBlock +
+    value.substring(endLineIndex);
 
   // Calculate new selection range to cover the indented block
   const addedChars = indentedLines.length * 2;
@@ -49,11 +53,14 @@ export const handleTabIndentation = (state: TextState): MutationResult => {
     newValue,
     newSelectionStart: startLineIndex, // Snap start to beginning of line
     newSelectionEnd: selectionEnd + addedChars, // Extend end by total added spaces
-    shouldPreventDefault: true
+    shouldPreventDefault: true,
   };
 };
 
-export const handleAutoClose = (state: TextState, char: string): MutationResult | null => {
+export const handleAutoClose = (
+  state: TextState,
+  char: string,
+): MutationResult | null => {
   const { value, selectionStart, selectionEnd } = state;
   const closeChar = AUTO_CLOSE_PAIRS[char];
 
@@ -62,35 +69,50 @@ export const handleAutoClose = (state: TextState, char: string): MutationResult 
   // Wrap selection
   if (selectionStart !== selectionEnd) {
     const selected = value.substring(selectionStart, selectionEnd);
-    const newValue = value.substring(0, selectionStart) + char + selected + closeChar + value.substring(selectionEnd);
+    const newValue =
+      value.substring(0, selectionStart) +
+      char +
+      selected +
+      closeChar +
+      value.substring(selectionEnd);
     return {
       newValue,
       newSelectionStart: selectionStart + 1,
       newSelectionEnd: selectionEnd + 1, // Keep selection inside
-      shouldPreventDefault: true
+      shouldPreventDefault: true,
     };
-  } 
-  
+  }
+
   // Insert pair
-  const newValue = value.substring(0, selectionStart) + char + closeChar + value.substring(selectionEnd);
+  const newValue =
+    value.substring(0, selectionStart) +
+    char +
+    closeChar +
+    value.substring(selectionEnd);
   return {
     newValue,
     newSelectionStart: selectionStart + 1,
     newSelectionEnd: selectionStart + 1,
-    shouldPreventDefault: true
+    shouldPreventDefault: true,
   };
 };
 
-export const handleOvertype = (state: TextState, char: string): MutationResult | null => {
+export const handleOvertype = (
+  state: TextState,
+  char: string,
+): MutationResult | null => {
   const { value, selectionStart } = state;
-  
+
   // If we are typing a closing char that is already next to cursor, skip over it
-  if (Object.values(AUTO_CLOSE_PAIRS).includes(char) && value[selectionStart] === char) {
+  if (
+    Object.values(AUTO_CLOSE_PAIRS).includes(char) &&
+    value[selectionStart] === char
+  ) {
     return {
       newValue: value,
       newSelectionStart: selectionStart + 1,
       newSelectionEnd: selectionStart + 1,
-      shouldPreventDefault: true
+      shouldPreventDefault: true,
     };
   }
   return null;
@@ -98,34 +120,37 @@ export const handleOvertype = (state: TextState, char: string): MutationResult |
 
 export const handleSmartList = (state: TextState): MutationResult | null => {
   const { value, selectionStart, selectionEnd } = state;
-  
-  const lastNewLinePos = value.lastIndexOf('\n', selectionStart - 1);
+
+  const lastNewLinePos = value.lastIndexOf("\n", selectionStart - 1);
   const currentLineStart = lastNewLinePos + 1;
   const currentLine = value.substring(currentLineStart, selectionStart);
-  
+
   // Regex for unordered, ordered lists, or task lists
   // Capture groups: 1=indent, 2=bullet/number/task, 3=whitespace
   const match = currentLine.match(/^(\s*)([-*]|\d+\.|[-*]\s\[[ x]\])(\s+)/);
-  
+
   if (!match) return null;
 
   // Check if list item is empty (user wants to break out of list)
   const lineContent = currentLine.substring(match[0].length).trim();
-  if (lineContent === '') {
+  if (lineContent === "") {
     // Remove the bullet
-    const newValue = value.substring(0, currentLineStart) + '\n' + value.substring(selectionStart);
+    const newValue =
+      value.substring(0, currentLineStart) +
+      "\n" +
+      value.substring(selectionStart);
     // Determine where cursor should land (start of new line)
     return {
       newValue,
-      newSelectionStart: currentLineStart + 1, 
+      newSelectionStart: currentLineStart + 1,
       newSelectionEnd: currentLineStart + 1,
-      shouldPreventDefault: true
+      shouldPreventDefault: true,
     };
   }
 
   // Calculate next bullet
   let nextBullet = match[2];
-  
+
   // Handle Ordered List increment
   if (match[2].match(/^\d+\.$/)) {
     const num = parseInt(match[2]);
@@ -140,17 +165,22 @@ export const handleSmartList = (state: TextState): MutationResult | null => {
   }
 
   const insertion = `\n${match[1]}${nextBullet}${match[3]}`;
-  const newValue = value.substring(0, selectionStart) + insertion + value.substring(selectionEnd);
-  
+  const newValue =
+    value.substring(0, selectionStart) +
+    insertion +
+    value.substring(selectionEnd);
+
   return {
     newValue,
     newSelectionStart: selectionStart + insertion.length,
     newSelectionEnd: selectionStart + insertion.length,
-    shouldPreventDefault: true
+    shouldPreventDefault: true,
   };
 };
 
-export const handleSmartBackspace = (state: TextState): MutationResult | null => {
+export const handleSmartBackspace = (
+  state: TextState,
+): MutationResult | null => {
   const { value, selectionStart, selectionEnd } = state;
 
   if (selectionStart === selectionEnd && selectionStart > 0) {
@@ -159,32 +189,44 @@ export const handleSmartBackspace = (state: TextState): MutationResult | null =>
 
     // If deleting opening char and next is closing char, delete both
     if (AUTO_CLOSE_PAIRS[charToDelete] === nextChar) {
-      const newValue = value.substring(0, selectionStart - 1) + value.substring(selectionStart + 1);
+      const newValue =
+        value.substring(0, selectionStart - 1) +
+        value.substring(selectionStart + 1);
       return {
         newValue,
         newSelectionStart: selectionStart - 1,
         newSelectionEnd: selectionStart - 1,
-        shouldPreventDefault: true
+        shouldPreventDefault: true,
       };
     }
   }
   return null;
 };
 
-export const handleFormatWrapper = (state: TextState, wrapper: string): MutationResult => {
+export const handleFormatWrapper = (
+  state: TextState,
+  wrapper: string,
+): MutationResult => {
   const { value, selectionStart, selectionEnd } = state;
   const selectedText = value.substring(selectionStart, selectionEnd);
   const before = value.substring(0, selectionStart);
   const after = value.substring(selectionEnd);
 
   // Unwrap if already wrapped
-  if (selectedText.startsWith(wrapper) && selectedText.endsWith(wrapper) && selectedText.length >= 2 * wrapper.length) {
-    const newText = selectedText.substring(wrapper.length, selectedText.length - wrapper.length);
+  if (
+    selectedText.startsWith(wrapper) &&
+    selectedText.endsWith(wrapper) &&
+    selectedText.length >= 2 * wrapper.length
+  ) {
+    const newText = selectedText.substring(
+      wrapper.length,
+      selectedText.length - wrapper.length,
+    );
     return {
       newValue: before + newText + after,
       newSelectionStart: selectionStart,
       newSelectionEnd: selectionStart + newText.length,
-      shouldPreventDefault: true
+      shouldPreventDefault: true,
     };
   }
 
@@ -196,7 +238,7 @@ export const handleFormatWrapper = (state: TextState, wrapper: string): Mutation
       newValue: newBefore + selectedText + newAfter,
       newSelectionStart: selectionStart - wrapper.length,
       newSelectionEnd: selectionEnd - wrapper.length,
-      shouldPreventDefault: true
+      shouldPreventDefault: true,
     };
   }
 
@@ -205,56 +247,65 @@ export const handleFormatWrapper = (state: TextState, wrapper: string): Mutation
     newValue: before + wrapper + selectedText + wrapper + after,
     newSelectionStart: selectionStart + wrapper.length,
     newSelectionEnd: selectionEnd + wrapper.length,
-    shouldPreventDefault: true
+    shouldPreventDefault: true,
   };
 };
 
 export const handleLink = (state: TextState): MutationResult => {
   const { value, selectionStart, selectionEnd } = state;
   const selectedText = value.substring(selectionStart, selectionEnd);
-  
+
   // If no text selected, insert empty link []()
   if (!selectedText) {
-    const newValue = value.substring(0, selectionStart) + '[]()' + value.substring(selectionEnd);
+    const newValue =
+      value.substring(0, selectionStart) +
+      "[]()" +
+      value.substring(selectionEnd);
     return {
       newValue,
       newSelectionStart: selectionStart + 1, // Inside brackets
       newSelectionEnd: selectionStart + 1,
-      shouldPreventDefault: true
+      shouldPreventDefault: true,
     };
   }
 
   // If text is selected, wrap it in brackets and add parens: [text]()
-  const newValue = value.substring(0, selectionStart) + `[${selectedText}]()` + value.substring(selectionEnd);
+  const newValue =
+    value.substring(0, selectionStart) +
+    `[${selectedText}]()` +
+    value.substring(selectionEnd);
   // Place cursor inside the parentheses
   const cursorPosition = selectionStart + selectedText.length + 3; // [ + text + ] + ( = +3
-  
+
   return {
     newValue,
     newSelectionStart: cursorPosition,
     newSelectionEnd: cursorPosition,
-    shouldPreventDefault: true
+    shouldPreventDefault: true,
   };
 };
 
-export const toggleLinePrefix = (state: TextState, prefix: string): MutationResult => {
+export const toggleLinePrefix = (
+  state: TextState,
+  prefix: string,
+): MutationResult => {
   const { value, selectionStart, selectionEnd } = state;
-  
+
   // Find start and end of the affected lines
-  const firstLineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-  let lastLineEnd = value.indexOf('\n', selectionEnd);
+  const firstLineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
+  let lastLineEnd = value.indexOf("\n", selectionEnd);
   if (lastLineEnd === -1) lastLineEnd = value.length;
 
   const content = value.substring(firstLineStart, lastLineEnd);
-  const lines = content.split('\n');
+  const lines = content.split("\n");
 
   // Regex to detect existing prefixes: Headers (#), Bullets (- or *), Numbers (1.), Blockquotes (>), Task Lists (- [ ])
   const prefixRegex = /^(\s*)(#+\s|[-*]\s|\d+\.\s|>\s|[-*]\s\[[ x]\]\s)/;
 
   // Check if all lines already start with the *target* prefix
-  const isAllTargetPrefixed = lines.every(line => line.startsWith(prefix));
+  const isAllTargetPrefixed = lines.every((line) => line.startsWith(prefix));
 
-  const newLines = lines.map(line => {
+  const newLines = lines.map((line) => {
     if (isAllTargetPrefixed) {
       // Remove the prefix
       return line.substring(prefix.length);
@@ -270,13 +321,16 @@ export const toggleLinePrefix = (state: TextState, prefix: string): MutationResu
     }
   });
 
-  const newContent = newLines.join('\n');
-  const newValue = value.substring(0, firstLineStart) + newContent + value.substring(lastLineEnd);
+  const newContent = newLines.join("\n");
+  const newValue =
+    value.substring(0, firstLineStart) +
+    newContent +
+    value.substring(lastLineEnd);
 
   return {
     newValue,
     newSelectionStart: firstLineStart,
     newSelectionEnd: firstLineStart + newContent.length,
-    shouldPreventDefault: true
+    shouldPreventDefault: true,
   };
 };

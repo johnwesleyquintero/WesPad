@@ -1,6 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Tab } from '../types';
-import { Plus, X, FileText, Settings, Download, Save, FolderOpen, Undo2, Redo2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from "react";
+import { Tab } from "../types";
+import {
+  Plus,
+  X,
+  FileText,
+  Settings,
+  Download,
+  Save,
+  FolderOpen,
+  Undo2,
+  Redo2,
+} from "lucide-react";
 
 interface TabBarProps {
   tabs: Tab[];
@@ -19,11 +29,11 @@ interface TabBarProps {
   canRedo: boolean;
 }
 
-export const TabBar: React.FC<TabBarProps> = ({ 
-  tabs, 
-  activeTabId, 
-  onTabClick, 
-  onTabClose, 
+export const TabBar: React.FC<TabBarProps> = ({
+  tabs,
+  activeTabId,
+  onTabClick,
+  onTabClose,
   onNewTab,
   onRenameTab,
   onOpenSettings,
@@ -33,10 +43,10 @@ export const TabBar: React.FC<TabBarProps> = ({
   onUndo,
   onRedo,
   canUndo,
-  canRedo
+  canRedo,
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -60,9 +70,9 @@ export const TabBar: React.FC<TabBarProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSaveTitle();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       setEditingId(null);
     }
   };
@@ -76,32 +86,34 @@ export const TabBar: React.FC<TabBarProps> = ({
           className={`
             group flex items-center h-full px-3 min-w-[120px] max-w-[200px] 
             border-r border-border cursor-pointer transition-colors duration-100
-            ${activeTabId === tab.id 
-              ? 'bg-surface text-text border-t-2 border-t-text' 
-              : 'bg-background text-muted hover:bg-surface hover:text-text border-t-2 border-t-transparent'}
+            ${
+              activeTabId === tab.id
+                ? "bg-surface text-text border-t-2 border-t-text"
+                : "bg-background text-muted hover:bg-surface hover:text-text border-t-2 border-t-transparent"
+            }
           `}
         >
           <FileText size={14} className="mr-2 opacity-50 flex-shrink-0" />
-          
+
           {editingId === tab.id ? (
-             <input
-                ref={inputRef}
-                type="text"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleSaveTitle}
-                onKeyDown={handleKeyDown}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-background text-text text-xs font-medium focus:outline-none w-full px-1 border border-border rounded"
-             />
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-background text-text text-xs font-medium focus:outline-none w-full px-1 border border-border rounded"
+            />
           ) : (
-             <span 
-               className="truncate text-xs font-medium flex-1"
-               onDoubleClick={(e) => handleDoubleClick(e, tab)}
-               title="Double-click to rename"
-             >
-               {tab.title || 'Untitled'}
-             </span>
+            <span
+              className="truncate text-xs font-medium flex-1"
+              onDoubleClick={(e) => handleDoubleClick(e, tab)}
+              title="Double-click to rename"
+            >
+              {tab.title || "Untitled"}
+            </span>
           )}
 
           <button
@@ -109,7 +121,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             className={`
               ml-2 p-0.5 rounded-full hover:bg-muted/20 hover:text-text
               opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0
-              ${activeTabId === tab.id ? 'opacity-100' : ''}
+              ${activeTabId === tab.id ? "opacity-100" : ""}
             `}
           >
             <X size={12} />
@@ -123,30 +135,34 @@ export const TabBar: React.FC<TabBarProps> = ({
       >
         <Plus size={16} />
       </button>
-      
+
       {/* Spacer to fill rest of bar */}
       <div className="flex-1 bg-background h-full"></div>
-      
+
       {/* Undo/Redo Group */}
       <div className="flex items-center border-l border-border h-full">
-        <button 
+        <button
           onClick={onUndo}
           disabled={!canUndo}
           className={`h-full px-3 flex items-center justify-center transition-colors
-            ${canUndo 
-              ? 'text-muted hover:text-text hover:bg-surface' 
-              : 'text-muted/30 cursor-not-allowed'}`}
+            ${
+              canUndo
+                ? "text-muted hover:text-text hover:bg-surface"
+                : "text-muted/30 cursor-not-allowed"
+            }`}
           title="Undo (Ctrl+Z)"
         >
           <Undo2 size={16} />
         </button>
-        <button 
+        <button
           onClick={onRedo}
           disabled={!canRedo}
           className={`h-full px-3 flex items-center justify-center transition-colors border-r border-border
-            ${canRedo 
-              ? 'text-muted hover:text-text hover:bg-surface' 
-              : 'text-muted/30 cursor-not-allowed'}`}
+            ${
+              canRedo
+                ? "text-muted hover:text-text hover:bg-surface"
+                : "text-muted/30 cursor-not-allowed"
+            }`}
           title="Redo (Ctrl+Shift+Z)"
         >
           <Redo2 size={16} />
@@ -154,7 +170,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       </div>
 
       {/* Open Button */}
-      <button 
+      <button
         onClick={onOpen}
         className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center"
         title="Open File (Ctrl+O)"
@@ -163,7 +179,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       </button>
 
       {/* Save Button */}
-      <button 
+      <button
         onClick={onSave}
         className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
         title="Save As (Ctrl+S)"
@@ -172,7 +188,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       </button>
 
       {/* Export Button */}
-      <button 
+      <button
         onClick={onExport}
         className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
         title="Export File"
@@ -181,7 +197,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       </button>
 
       {/* Settings Button */}
-      <button 
+      <button
         onClick={onOpenSettings}
         className="h-full px-3 text-muted hover:text-text hover:bg-surface transition-colors flex items-center justify-center border-l border-border"
         title="Settings"

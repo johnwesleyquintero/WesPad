@@ -1,9 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  FilePlus, FolderOpen, Save, Download, Settings, 
-  Sparkles, Eye, Columns, PenTool, Search, Command, Maximize2 
-} from 'lucide-react';
-import { ViewMode } from '../types';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  FilePlus,
+  FolderOpen,
+  Save,
+  Download,
+  Settings,
+  Sparkles,
+  Eye,
+  Columns,
+  PenTool,
+  Search,
+  Command,
+  Maximize2,
+} from "lucide-react";
+import { ViewMode } from "../types";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -18,7 +28,7 @@ interface CommandPaletteProps {
     onFind: () => void;
     onToggleZen: () => void;
     setViewMode: (mode: ViewMode) => void;
-  }
+  };
 }
 
 interface CommandOption {
@@ -29,33 +39,98 @@ interface CommandOption {
   shortcut?: string;
 }
 
-export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, actions }) => {
-  const [query, setQuery] = useState('');
+export const CommandPalette: React.FC<CommandPaletteProps> = ({
+  isOpen,
+  onClose,
+  actions,
+}) => {
+  const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const commands: CommandOption[] = [
-    { id: 'zen-mode', label: 'Toggle Zen Mode', icon: <Maximize2 size={16} />, action: actions.onToggleZen, shortcut: 'Alt+Z' },
-    { id: 'new-tab', label: 'New Tab', icon: <FilePlus size={16} />, action: actions.onNewTab, shortcut: 'Ctrl+N' },
-    { id: 'open-file', label: 'Open File', icon: <FolderOpen size={16} />, action: actions.onOpenFile, shortcut: 'Ctrl+O' },
-    { id: 'save-as', label: 'Save As...', icon: <Save size={16} />, action: actions.onSaveAs, shortcut: 'Ctrl+S' },
-    { id: 'export', label: 'Export to File', icon: <Download size={16} />, action: actions.onExport },
-    { id: 'find', label: 'Find & Replace', icon: <Search size={16} />, action: actions.onFind, shortcut: 'Ctrl+F' },
-    { id: 'ai', label: 'Open AI Tools', icon: <Sparkles size={16} />, action: actions.onAI, shortcut: 'Ctrl+K' },
-    { id: 'view-edit', label: 'View: Editor Only', icon: <PenTool size={16} />, action: () => actions.setViewMode(ViewMode.EDIT) },
-    { id: 'view-split', label: 'View: Split Screen', icon: <Columns size={16} />, action: () => actions.setViewMode(ViewMode.SPLIT) },
-    { id: 'view-preview', label: 'View: Preview Only', icon: <Eye size={16} />, action: () => actions.setViewMode(ViewMode.PREVIEW) },
-    { id: 'settings', label: 'Settings', icon: <Settings size={16} />, action: actions.onSettings },
+    {
+      id: "zen-mode",
+      label: "Toggle Zen Mode",
+      icon: <Maximize2 size={16} />,
+      action: actions.onToggleZen,
+      shortcut: "Alt+Z",
+    },
+    {
+      id: "new-tab",
+      label: "New Tab",
+      icon: <FilePlus size={16} />,
+      action: actions.onNewTab,
+      shortcut: "Ctrl+N",
+    },
+    {
+      id: "open-file",
+      label: "Open File",
+      icon: <FolderOpen size={16} />,
+      action: actions.onOpenFile,
+      shortcut: "Ctrl+O",
+    },
+    {
+      id: "save-as",
+      label: "Save As...",
+      icon: <Save size={16} />,
+      action: actions.onSaveAs,
+      shortcut: "Ctrl+S",
+    },
+    {
+      id: "export",
+      label: "Export to File",
+      icon: <Download size={16} />,
+      action: actions.onExport,
+    },
+    {
+      id: "find",
+      label: "Find & Replace",
+      icon: <Search size={16} />,
+      action: actions.onFind,
+      shortcut: "Ctrl+F",
+    },
+    {
+      id: "ai",
+      label: "Open AI Tools",
+      icon: <Sparkles size={16} />,
+      action: actions.onAI,
+      shortcut: "Ctrl+K",
+    },
+    {
+      id: "view-edit",
+      label: "View: Editor Only",
+      icon: <PenTool size={16} />,
+      action: () => actions.setViewMode(ViewMode.EDIT),
+    },
+    {
+      id: "view-split",
+      label: "View: Split Screen",
+      icon: <Columns size={16} />,
+      action: () => actions.setViewMode(ViewMode.SPLIT),
+    },
+    {
+      id: "view-preview",
+      label: "View: Preview Only",
+      icon: <Eye size={16} />,
+      action: () => actions.setViewMode(ViewMode.PREVIEW),
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: <Settings size={16} />,
+      action: actions.onSettings,
+    },
   ];
 
-  const filteredCommands = commands.filter(cmd => 
-    cmd.label.toLowerCase().includes(query.toLowerCase())
+  const filteredCommands = commands.filter((cmd) =>
+    cmd.label.toLowerCase().includes(query.toLowerCase()),
   );
 
   useEffect(() => {
     if (isOpen) {
-      setQuery('');
+      setQuery("");
       setSelectedIndex(0);
       // Small timeout to ensure DOM is rendered before focusing
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -65,9 +140,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
   // Handle scrolling when selection changes
   useEffect(() => {
     if (listRef.current && filteredCommands.length > 0) {
-      const selectedElement = listRef.current.children[selectedIndex] as HTMLElement;
+      const selectedElement = listRef.current.children[
+        selectedIndex
+      ] as HTMLElement;
       if (selectedElement) {
-        selectedElement.scrollIntoView({ block: 'nearest' });
+        selectedElement.scrollIntoView({ block: "nearest" });
       }
     }
   }, [selectedIndex, filteredCommands]);
@@ -75,29 +152,35 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
   if (!isOpen) return null;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelectedIndex(prev => (prev + 1) % filteredCommands.length);
-    } else if (e.key === 'ArrowUp') {
+      setSelectedIndex((prev) => (prev + 1) % filteredCommands.length);
+    } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setSelectedIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length);
-    } else if (e.key === 'Enter') {
+      setSelectedIndex(
+        (prev) =>
+          (prev - 1 + filteredCommands.length) % filteredCommands.length,
+      );
+    } else if (e.key === "Enter") {
       e.preventDefault();
       if (filteredCommands[selectedIndex]) {
         filteredCommands[selectedIndex].action();
         onClose();
       }
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       e.preventDefault();
       onClose();
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-black/50 backdrop-blur-sm animate-in fade-in duration-100" onClick={onClose}>
-      <div 
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-black/50 backdrop-blur-sm animate-in fade-in duration-100"
+      onClick={onClose}
+    >
+      <div
         className="w-[500px] max-w-[90vw] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col text-text"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center p-3 border-b border-border">
           <Command size={18} className="text-muted mr-3" />
@@ -107,7 +190,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             className="flex-1 bg-transparent text-text text-base placeholder-muted focus:outline-none"
             placeholder="Type a command..."
             value={query}
-            onChange={e => {
+            onChange={(e) => {
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
@@ -115,10 +198,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             autoComplete="off"
           />
         </div>
-        
+
         <div ref={listRef} className="max-h-[300px] overflow-y-auto py-1">
           {filteredCommands.length === 0 ? (
-            <div className="px-4 py-3 text-muted text-sm text-center">No matching commands</div>
+            <div className="px-4 py-3 text-muted text-sm text-center">
+              No matching commands
+            </div>
           ) : (
             filteredCommands.map((cmd, index) => (
               <button
@@ -128,14 +213,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                   onClose();
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
-                  index === selectedIndex 
-                    ? 'bg-background text-text' 
-                    : 'text-muted hover:bg-background/50 hover:text-text'
+                  index === selectedIndex
+                    ? "bg-background text-text"
+                    : "text-muted hover:bg-background/50 hover:text-text"
                 }`}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
                 <div className="flex items-center">
-                  <span className={`mr-3 ${index === selectedIndex ? 'text-text' : 'text-muted'}`}>
+                  <span
+                    className={`mr-3 ${index === selectedIndex ? "text-text" : "text-muted"}`}
+                  >
                     {cmd.icon}
                   </span>
                   <span className="text-sm font-medium">{cmd.label}</span>
@@ -149,7 +236,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             ))
           )}
         </div>
-        
+
         <div className="bg-background border-t border-border px-3 py-1.5 flex justify-between items-center text-[10px] text-muted">
           <div className="flex gap-2">
             <span>↑↓ to navigate</span>
