@@ -1,6 +1,6 @@
 import { GoogleGenAI, Chat } from "@google/genai";
 
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-3-flash-preview";
 
 /**
  * Safely retrieves the API key from the environment if available.
