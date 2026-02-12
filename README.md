@@ -25,38 +25,44 @@ Modern writing apps have become bloated SaaS platforms demanding monthly tithes 
 - **Session Persistence:** Auto-saves to local storage. Never lose a draft on refresh.
 - **Tabbed Interface:** Manage multiple documents simultaneously.
 - **Split View:** Edit Markdown on the left, see the rendered preview on the right.
+- **Native File Access:** Save and open files directly from your local disk using the File System Access API.
+- **Command Palette:** Quick access to all features via `Ctrl + Shift + P`.
+- **Find & Replace:** Full find and replace functionality within your documents.
+- **Zen Mode:** Distraction-free writing environment with `Alt + Z`.
 - **AI Assistant (Optional):**
-  - **Rewrite:** Polish selected text for clarity and tone.
-  - **Summarize:** Condense long notes into paragraphs.
-  - **Generate:** Create content from scratch using custom prompts.
-  - _Powered by Google Gemini Flash 2.5/3.0_
+  - **Conversational AI:** Chat with your documents.
+  - **Rewrite & Refine:** Polish selected text with multiple tones (Professional, Casual, Creative, Academic, Concise).
+  - **Summarize & Generate:** Condense notes or create content from scratch.
+  - _Powered by Google Gemini Flash 1.5/2.0_
 - **Quality of Life:**
   - Export to `.md` or `.txt`.
+  - Drag & Drop file support.
   - Customizable font family (Mono, Sans, Serif).
-  - Adjustable font size.
+  - Adjustable font size and theme (Dark/Light/System).
   - Toggleable Word Wrap.
 - **PWA / Offline Capable:**
   - Installable on Desktop and Mobile.
-  - Works fully offline (once cached).
+  - Works fully offline.
+  - **OS Integration:** Register as a file handler to open `.md` and `.txt` files directly from your operating system.
 
 ## 🛠️ Tech Stack
 
-- **Framework:** React 19 + TypeScript
-- **Styling:** Tailwind CSS (CDN/Runtime for zero-build portability)
+- **Framework:** React 18 + TypeScript
+- **Styling:** Tailwind CSS (Modern, utility-first styling)
 - **AI:** Google GenAI SDK (`@google/genai`)
 - **Icons:** Lucide React
-- **Markdown:** React Markdown
+- **Markdown:** React Markdown + Remark GFM
+- **Code Highlighting:** React Syntax Highlighter (Prism)
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
 - A modern web browser.
+- [Node.js](https://nodejs.org/) (v18 or higher)
 - (Optional) A Google Gemini API Key for AI features.
 
 ### Installation / Running
-
-Since WesPad is designed to be lightweight, it runs directly via ES Modules in the browser.
 
 1.  **Clone the repo:**
 
@@ -65,22 +71,30 @@ Since WesPad is designed to be lightweight, it runs directly via ES Modules in t
     cd wespad
     ```
 
-2.  **Serve the files:**
-    You can use any static file server.
+2.  **Install dependencies:**
 
     ```bash
-    # using python
-    python3 -m http.server 8000
-
-    # using serve
-    npx serve .
+    npm install
     ```
 
-3.  **Open in Browser:**
-    Navigate to `http://localhost:8000`.
+3.  **Run in Development Mode:**
 
-4.  **Install App:**
-    Click the "Install" icon in your browser address bar to install WesPad as a standalone application.
+    ```bash
+    npm run dev
+    ```
+
+4.  **Open in Browser:**
+    Navigate to the URL shown in your terminal (usually `http://localhost:5173`).
+
+5.  **Build for Production:**
+
+    ```bash
+    npm run build
+    ```
+    The production-ready files will be in the `dist/` directory.
+
+6.  **Install App:**
+    Click the "Install" icon in your browser address bar to install WesPad as a standalone PWA application.
 
 ## 🤖 Configuring AI
 
@@ -97,12 +111,19 @@ _Security Note: Your API key is stored locally in your browser's `localStorage`.
 
 ## ⌨️ Keyboard Shortcuts
 
-| Shortcut   | Action                      |
-| ---------- | --------------------------- |
-| `Ctrl + N` | New Tab                     |
-| `Ctrl + K` | Open AI Command Palette     |
-| `Ctrl + S` | Force Save (Visual trigger) |
-| `Tab`      | Indent (2 spaces)           |
+| Shortcut           | Action                      |
+| ------------------ | --------------------------- |
+| `Ctrl + N`         | New Document                |
+| `Ctrl + O`         | Open File                   |
+| `Ctrl + S`         | Save As                     |
+| `Ctrl + Shift + P` | Command Palette             |
+| `Ctrl + F`         | Find & Replace              |
+| `Ctrl + K`         | AI Assistant                |
+| `Alt + Z`          | Zen Mode                    |
+| `Ctrl + Z`         | Undo                        |
+| `Ctrl + Y`         | Redo                        |
+| `Tab`              | Indent (2 spaces)           |
+| `Esc`              | Close Modals / Exit Zen     |
 
 ## 🗺️ Roadmap
 
