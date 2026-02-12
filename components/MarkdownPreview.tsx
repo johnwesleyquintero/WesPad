@@ -39,13 +39,13 @@ const CodeBlock = ({
 
   return (
     <div className="relative group my-4 rounded-lg overflow-hidden border border-border">
-      <div className="flex items-center justify-between bg-[#1e1e1e] px-4 py-2 border-b border-[#333]">
+      <div className="flex items-center justify-between bg-surface px-4 py-2 border-b border-border">
         <span className="text-xs text-muted font-mono lowercase">
           {match[1]}
         </span>
         <button
           onClick={handleCopy}
-          className="text-muted hover:text-white transition-colors"
+          className="text-muted hover:text-accent transition-colors"
           title="Copy code"
         >
           {isCopied ? (
@@ -61,7 +61,7 @@ const CodeBlock = ({
         language={match[1]}
         style={vscDarkPlus}
         customStyle={{
-          background: "#1e1e1e",
+          background: "transparent",
           margin: 0,
           padding: "1.5rem",
           fontSize: "0.85em",

@@ -91,6 +91,7 @@ Modern writing apps have become bloated SaaS platforms demanding monthly tithes 
     ```bash
     npm run build
     ```
+
     The production-ready files will be in the `dist/` directory.
 
 6.  **Install App:**
@@ -111,19 +112,19 @@ _Security Note: Your API key is stored locally in your browser's `localStorage`.
 
 ## ⌨️ Keyboard Shortcuts
 
-| Shortcut           | Action                      |
-| ------------------ | --------------------------- |
-| `Ctrl + N`         | New Document                |
-| `Ctrl + O`         | Open File                   |
-| `Ctrl + S`         | Save As                     |
-| `Ctrl + Shift + P` | Command Palette             |
-| `Ctrl + F`         | Find & Replace              |
-| `Ctrl + K`         | AI Assistant                |
-| `Alt + Z`          | Zen Mode                    |
-| `Ctrl + Z`         | Undo                        |
-| `Ctrl + Y`         | Redo                        |
-| `Tab`              | Indent (2 spaces)           |
-| `Esc`              | Close Modals / Exit Zen     |
+| Shortcut           | Action                  |
+| ------------------ | ----------------------- |
+| `Ctrl + N`         | New Document            |
+| `Ctrl + O`         | Open File               |
+| `Ctrl + S`         | Save As                 |
+| `Ctrl + Shift + P` | Command Palette         |
+| `Ctrl + F`         | Find & Replace          |
+| `Ctrl + K`         | AI Assistant            |
+| `Alt + Z`          | Zen Mode                |
+| `Ctrl + Z`         | Undo                    |
+| `Ctrl + Y`         | Redo                    |
+| `Tab`              | Indent (2 spaces)       |
+| `Esc`              | Close Modals / Exit Zen |
 
 ## 🗺️ Roadmap
 

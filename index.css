@@ -14,14 +14,14 @@
 }
 
 .dark {
-  /* Dark Mode */
-  --background: #0a0a0a; /* neutral-950 */
-  --surface: #171717; /* neutral-900 */
-  --text: #e5e5e5; /* neutral-200 */
-  --muted: #737373; /* neutral-500 */
-  --border: #262626; /* neutral-800 */
-  --accent: #ffffff; /* white */
-  --selection: #265973; /* muted blue */
+  /* Dark Mode - Soft ergonomic theme (similar to GitHub Dark Dimmed / JetBrains) */
+  --background: #1c1c1c; /* Dark charcoal, not pure black */
+  --surface: #242424;    /* Slightly lighter surface */
+  --text: #d1d5db;       /* Soft gray text (gray-300), not pure white */
+  --muted: #8e96a3;      /* Muted blue-gray */
+  --border: #333333;     /* Subtle borders */
+  --accent: #60a5fa;     /* Soft blue accent */
+  --selection: #3b82f644; /* Semi-transparent blue */
 }
 
 html,

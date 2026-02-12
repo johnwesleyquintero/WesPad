@@ -167,7 +167,10 @@ const App: React.FC = () => {
     addToast,
   });
 
-  const handleCreateNewTab = useCallback(() => createTab("Untitled", ""), [createTab]);
+  const handleCreateNewTab = useCallback(
+    () => createTab("Untitled", ""),
+    [createTab],
+  );
   const handleToggleZenMode = useCallback(() => {
     setIsZenMode((p) => !p);
     addToast(isZenMode ? "Exited Zen Mode" : "Zen Mode Active", "info");
@@ -259,7 +262,10 @@ const App: React.FC = () => {
   const readingTime = Math.ceil(wordCount / 225);
 
   const handleCloseTab = useCallback((id: string) => closeTab(id), [closeTab]);
-  const handleNewTab = useCallback(() => createTab("Untitled", ""), [createTab]);
+  const handleNewTab = useCallback(
+    () => createTab("Untitled", ""),
+    [createTab],
+  );
 
   return (
     <div
